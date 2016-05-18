@@ -7,8 +7,22 @@ export BlockFGMRES,ArrayTypes,hierarchyExists,copySolver,destroyCoarsestLU
 using jInv.Mesh;
 using KrylovMethods
 
-import jInv.Utils.clear!
-using MUMPS;
+
+
+
+# check if MUMPS can be used
+const minMUMPSversion = VersionNumber(0,0,1)
+hasMUMPS=false
+vMUMPS = VersionNumber(0,0,0)
+try 
+	vMUMPS = Pkg.installed("MUMPS")
+	hasMUMPS = vMUMPS >= minMUMPSversion
+	if hasMUMPS
+		using MUMPS;
+	end
+catch 
+end
+
 using ParSpMatVec;
 
 SparseCSCTypes = Union{SparseMatrixCSC{Complex128,Int64},SparseMatrixCSC{Float64,Int64}}
@@ -90,7 +104,7 @@ else
 	return CYCLEmem(zeros(T,n,m),r,zeros(T,n,m));
 end
 end
-
+import jInv.Utils.clear!
 function clear!(param::MGparam)
 param.Ps = Array(SparseMatrixCSC,0);
 param.Rs = Array(SparseMatrixCSC,0);
