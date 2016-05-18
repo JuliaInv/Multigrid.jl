@@ -14,7 +14,6 @@ notifications:
 before_install:
    - julia -e 'Pkg.clone("https://github.com/JuliaInv/jInv.jl","jInv"); Pkg.build("jInv");'
    - julia -e 'Pkg.clone("https://github.com/JuliaInv/DivSigGrad.jl","DivSigGrad"); Pkg.build("DivSigGrad");'
-   - julia -e 'Pkg.clone("https://github.com/JuliaInv/ParSpMatVec.jl","ParSpMatVec"); Pkg.build("ParSpMatVec");'
    - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
 
 script:
