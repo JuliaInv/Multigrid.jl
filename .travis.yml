@@ -1,0 +1,24 @@
+language: julia
+
+os:
+  - osx
+  - linux
+
+julia:
+  - 0.4
+  - release
+  
+notifications:
+  email: false
+ 
+before_install:
+   - julia -e 'Pkg.clone("https://github.com/JuliaInv/jInv.jl","jInv"); Pkg.build("jInv");'
+   - julia -e 'Pkg.clone("https://github.com/JuliaInv/DivSigGrad.jl","DivSigGrad"); Pkg.build("DivSigGrad");'
+   - julia -e 'Pkg.clone("https://github.com/JuliaInv/ParSpMatVec.jl","ParSpMatVec"); Pkg.build("ParSpMatVec");'
+   - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
+
+script:
+  - julia --check-bounds=yes -e 'Pkg.clone(pwd()); Pkg.build("Multigrid"); Pkg.test("Multigrid"; coverage=true)'
+
+after_success:
+  - julia -e 'cd(Pkg.dir("Multigrid")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())'
