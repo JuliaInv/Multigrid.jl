@@ -2,7 +2,7 @@
 
 # Multigrid.jl
 
-A multigrid package in Julia. Uses shared memory parallelism using OMP and ParSpMatVec.jl.
+A multigrid package in Julia. Uses shared memory parallelism using OMP and [`ParSpMatVec`] (https://github.com/JuliaInv/ParSpMatVec.jl) .
 
 Includes:
 1) Geometric multigrid on a regular mesh.
@@ -11,13 +11,14 @@ Eran Treister and Irad Yavneh, Non-Galerkin Multigrid based on Sparsified Smooth
 
 Options for V,F,W and K cycles.
 Includes a block version of multigrid. Most effective for using as a preconditioner for Block Krylov methods (see KrylovMethods.jl).
+Coarsest Grid can be solved using [`MUMPS`] (https://github.com/JuliaSparse/MUMPS.jl) or using Julia's backslash.
 
 # Requirements
 
 This package is intended to use with julia versions 0.4.x.
 
-This package is an add-on for jInv, which needs to be installed (for regular mesh module).
-For the testing - DivSigGrad.jl needs to be installed too.
+This package is an add-on for [`jInv`](https://github.com/JuliaInv/jInv.jl), which needs to be installed (for regular mesh module).
+For the testing -   [`DivSigGrad`] (https://github.com/JuliaInv/DivSigGrad.jl) needs to be installed too.
 
 # Installation
 
