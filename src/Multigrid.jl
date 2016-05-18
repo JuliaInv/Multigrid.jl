@@ -1,0 +1,127 @@
+
+module Multigrid
+export MGparam;
+export getMGparam,MGsetup, clear!
+export BlockFGMRES,ArrayTypes,hierarchyExists,copySolver,destroyCoarsestLU
+
+using jInv.Mesh;
+using KrylovMethods
+
+import jInv.Utils.clear!
+using MUMPS;
+using ParSpMatVec;
+
+SparseCSCTypes = Union{SparseMatrixCSC{Complex128,Int64},SparseMatrixCSC{Float64,Int64}}
+ArrayTypes = Union{Array{Complex128},Array{Complex64},Array{Float64},Array{Float32}}
+
+include("SpMatMul.jl");
+include("FGMRES.jl");
+include("BlockFGMRES.jl");
+
+
+type CYCLEmem
+	b 					::ArrayTypes; 						# memory for the right-hand-side.
+	r					::ArrayTypes; 						# memory for the residual.
+	x					::ArrayTypes; 						# memory for the iterated solution.
+end
+
+ 
+type MGparam
+	levels				:: Int64							# Maximum number of multigrid levels.
+	numCores			:: Int64							# Number of OMP cores to work with. Some operations (setup) are not parallelized.
+	maxOuterIter		:: Int64							# Maximum outer iterations.
+	innerIter			:: Int64      						# inner iterations for (Block)(Flexible)GMRES Acceleration. 
+															# Set to 0 if no acceleration or if BiCGSTAB is used. 
+	relativeTol			:: Float64							# Relative L2/Frobenius norm stopping criterion.
+	relaxType		    :: ASCIIString						# Relax type. Can be "Jac", "Jac-GMRES" or "SPAI". 
+	relaxParam			:: Float64							# Relax damping parameter. 
+	relaxPre			:: Function 						# pre and post relaxation numbers
+	relaxPost			:: Function							# These are functions to enable the pre and post relaxations to vary between the levels...
+	cycleType			:: Char								# Can be 'V', 'F', 'W', 'K' (Krylov cycles are done with FGMRES).
+	Ps					:: Array{SparseMatrixCSC{Float64}}  # all matrices here are transposed/conjugated so that parallel multiplication is efficient
+	Rs					:: Array{SparseMatrixCSC{Float64}}  # all matrices here are transposed/conjugated so that parallel multiplication is efficient
+	As					:: Array{SparseCSCTypes} 		    # all matrices here are transposed/conjugated so that parallel multiplication is efficient
+	relaxPrecs												# an array of relaxation preconditioners for all levels.
+	memCycle			:: Array{CYCLEmem}					# Space for x,b and r for each level.			
+	memRelax			:: Union{Array{FGMRESmem},Array{BlockFGMRESmem}}     # This is used just in case of GMRES relaxation.
+	memKcycle			:: Union{Array{FGMRESmem},Array{BlockFGMRESmem}}     # Memory for the Krylov-cycle FGMRES. First field is ignored.
+	coarseSolveType		:: ASCIIString						# Can be "MUMPS" or "NoMUMPS" for Julia backslash.
+	LU														# Factorization of coarsest level.
+	doTranspose			:: Int64
+end
+
+include("MGsetup.jl");
+include("SA-AMG.jl");
+include("MGcycle.jl");
+include("SolveFuncs.jl");
+
+function copySolver(MG::MGparam)
+# copies the solver parameters without the setup and allocated memory.
+return getMGparam(MG.levels,MG.numCores,MG.maxOuterIter,MG.innerIter,MG.relativeTol,MG.relaxType,MG.relaxParam,
+					MG.relaxPre,MG.relaxPost,MG.cycleType,MG.coarseSolveType);
+end
+
+
+
+function getMGparam(levels::Int64,numCores::Int64,maxIter::Int64,innerIter::Int64,relativeTol:: Float64,relaxType::ASCIIString,relaxParam::Float64,
+					relaxPre::Function,relaxPost::Function,cycleType::Char='V',coarseSolveType::ASCIIString="NoMUMPS")
+return MGparam(levels,numCores,maxIter,innerIter,relativeTol,relaxType,relaxParam,relaxPre,relaxPost,cycleType,[],[],[],[],[],
+				Array(FGMRESmem,0),Array(FGMRESmem,0),coarseSolveType,[],0);
+end
+					
+function getMGparam(levels::Int64=3,numCores::Int64=8,maxIter::Int64=20,innerIter::Int64=5,relativeTol::Float64=1e-6,relaxType::ASCIIString="Jac-GMRES",relaxParam::Float64=1.0,
+					relaxPre::Int64=2,relaxPost::Int64=2,cycleType::Char='V',coarseSolveType::ASCIIString="NoMUMPS")
+relaxPreFun(x) = relaxPre;
+relaxPostFun(x) = relaxPost;
+return getMGparam(levels,numCores,maxIter,innerIter,relativeTol,relaxType,relaxParam,relaxPreFun,relaxPostFun,cycleType,coarseSolveType);
+end
+					
+function getCYCLEmem(n::Int64,m::Int64,T::Type,withRes::Bool=true)
+r = zeros(T,0);
+if m==1
+	if withRes
+		r = zeros(T,n);
+	end
+	return CYCLEmem(zeros(T,n),r,zeros(T,n));
+else
+	if withRes
+		r = zeros(T,n,m);
+	end
+	return CYCLEmem(zeros(T,n,m),r,zeros(T,n,m));
+end
+end
+
+function clear!(param::MGparam)
+param.Ps = Array(SparseMatrixCSC,0);
+param.Rs = Array(SparseMatrixCSC,0);
+param.As = Array(SparseMatrixCSC,0);
+param.relaxPrecs = [];
+param.memCycle = Array(CYCLEmem,0);
+param.memRelax = Array(FGMRESmem,0);
+param.memKcycle = Array(FGMRESmem,0);
+destroyCoarsestLU(param);
+end
+
+function destroyCoarsestLU(param::MGparam)
+param.doTranspose = 0;
+if param.LU==[]
+	return;
+end
+if param.coarseSolveType=="MUMPS"
+	if isa(param.LU,MUMPSfactorization)
+		destroyMUMPS(param.LU);
+		param.LU = [];
+	end
+else
+	param.LU = [];
+end
+return;
+end
+
+function hierarchyExists(param::MGparam)
+return length(param.As) > 0;
+end
+
+
+
+end # Module
