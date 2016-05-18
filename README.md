@@ -10,14 +10,14 @@ Includes:
 Eran Treister and Irad Yavneh, Non-Galerkin Multigrid based on Sparsified Smoothed Aggregation. SIAM Journal on Scientific Computing, 37 (1), A30-A54, 2015.
 
 Options for V,F,W and K cycles.
-Includes block version of MG. Most effective for using as a preconditioner for Block Krylov methods (see KrylovMethods.jl).
+Includes a block version of multigrid. Most effective for using as a preconditioner for Block Krylov methods (see KrylovMethods.jl).
 
 # Requirements
 
 This package is intended to use with julia versions 0.4.x.
 
 This package is an add-on for jInv, which needs to be installed (for regular mesh module).
-For the tests - DivSigGrad.jl needs to be installed too.
+For the testing - DivSigGrad.jl needs to be installed too.
 
 # Installation
 
