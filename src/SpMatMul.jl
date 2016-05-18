@@ -1,20 +1,26 @@
 export SpMatMul,addVectors
 
 
-function SpMatMul(alpha::Union{Float64,Complex128,Complex64},A::SparseCSCTypes,x::ArrayTypes,beta::Union{Float64,Complex128,Complex64},target::ArrayTypes,numCores::Int64)
+function SpMatMul(alpha::Union{Float64,Complex128,Complex64},AT::SparseCSCTypes,x::ArrayTypes,beta::Union{Float64,Complex128,Complex64},target::ArrayTypes,numCores::Int64)
 # function calculates: target = beta*target + alpha*A*x
-# Base.Ac_mul_B!(alpha,A,x,beta,target);
-ParSpMatVec.Ac_mul_B!( alpha, A, x, beta, target, numCores );
+if hasParSpMatVec
+	Ac_mul_B!( alpha, A, x, beta, target, numCores );
+else
+	Base.Ac_mul_B!(alpha,A,x,beta,target);
+end
+
 return target;
 end
 
 
-function SpMatMul(A::SparseCSCTypes,x::ArrayTypes,target::ArrayTypes,numCores::Int64)
-
+function SpMatMul(AT::SparseCSCTypes,x::ArrayTypes,target::ArrayTypes,numCores::Int64)
 alpha = one(eltype(x));
 beta = zero(eltype(x));
-# Base.Ac_mul_B!(alpha,A,x,beta,target);
-ParSpMatVec.Ac_mul_B!( alpha, A, x, beta, target, numCores );
+if hasParSpMatVec
+	Ac_mul_B!( alpha, A, x, beta, target, numCores );
+else
+	Base.Ac_mul_B!(alpha,A,x,beta,target);
+end
 return target;
 end
 

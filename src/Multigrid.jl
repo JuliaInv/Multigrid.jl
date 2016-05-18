@@ -8,8 +8,6 @@ using jInv.Mesh;
 using KrylovMethods
 
 
-
-
 # check if MUMPS can be used
 const minMUMPSversion = VersionNumber(0,0,1)
 hasMUMPS=false
@@ -23,7 +21,19 @@ try
 catch 
 end
 
-using ParSpMatVec;
+# check if ParSPMatVec is available
+hasParSpMatVec = false
+const minVerParSpMatVec = VersionNumber(0,0,1)
+	vParSpMatVec = VersionNumber(0,0,0)
+try 
+	vParSpMatVec = Pkg.installed("ParSpMatVec")
+	hasParSpMatVec = vParSpMatVec>=minVerParSpMatVec
+catch 
+end
+if hasParSpMatVec
+	using ParSpMatVec
+end
+
 
 SparseCSCTypes = Union{SparseMatrixCSC{Complex128,Int64},SparseMatrixCSC{Float64,Int64}}
 ArrayTypes = Union{Array{Complex128},Array{Complex64},Array{Float64},Array{Float32}}
