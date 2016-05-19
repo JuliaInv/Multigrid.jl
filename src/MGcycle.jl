@@ -41,7 +41,7 @@ npostsmth = param.relaxPost(level);
 if param.relaxType=="Jac-GMRES"
 	
 	if nrhs == 1
-		x = FGMRES_relaxation(AT,r,x,npresmth,MM,gmresTol,false,false,numCores,param.memRelax[level])[1];
+		x = FGMRES_relaxation(AT,r,x,npresmth,MM,gmresTol,false,true,numCores,param.memRelax[level])[1];
 	else
 		x = BlockFGMRES_relaxation(AT,r,x,npresmth,MM,gmresTol,false,false,numCores, param.memRelax[level])[1];
 	end
@@ -94,7 +94,7 @@ r[:] = b;
 SpMatMul(-oneType,AT,x,oneType,r,numCores); #  r -= A'*x;
 if param.relaxType=="Jac-GMRES"
 	if nrhs == 1
-		x = FGMRES_relaxation(AT,r,x,npostsmth,MM,gmresTol,false,false,numCores,param.memRelax[level])[1];
+		x = FGMRES_relaxation(AT,r,x,npostsmth,MM,gmresTol,false,true,numCores,param.memRelax[level])[1];
 	else
 		x = BlockFGMRES_relaxation(AT,r,x,npostsmth,MM,gmresTol,false,false,numCores, param.memRelax[level])[1];
 	end

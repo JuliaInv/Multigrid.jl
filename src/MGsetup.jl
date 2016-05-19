@@ -100,7 +100,7 @@ for l = 1:(param.levels-1)
 	if param.relaxType=="Jac-GMRES"
 		maxRelax = max(param.relaxPre(l),param.relaxPost(l));
 		if nrhs == 1
-			memRelax[l] = getFGMRESmem(N,false,rhsType,maxRelax);
+			memRelax[l] = getFGMRESmem(N,true,rhsType,maxRelax);
 		else
 			memRelax[l] = getBlockFGMRESmem(N,nrhs,false,rhsType,maxRelax);
 		end
