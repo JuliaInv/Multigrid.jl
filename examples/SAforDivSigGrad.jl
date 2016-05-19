@@ -14,7 +14,6 @@ Ar = Ar + 1e-8*norm(Ar,1)*speye(size(Ar,2));
 levels      = 3;
 numCores 	= 8; 
 maxIter     = 20;
-innerIter   = 0;
 relativeTol = 1e-10;
 relaxType   = "SPAI";
 relaxParam  = 1.0;
@@ -23,7 +22,7 @@ relaxPost   = 2;
 cycleType   ='V';
 coarseSolveType = "MUMPS";
 
-MG = getMGparam(levels,numCores,maxIter,innerIter,relativeTol,relaxType,relaxParam,relaxPre,relaxPost,cycleType,coarseSolveType);
+MG = getMGparam(levels,numCores,maxIter,relativeTol,relaxType,relaxParam,relaxPre,relaxPost,cycleType,coarseSolveType);
 
 N = size(Ar,2);
 
@@ -40,13 +39,12 @@ tic()
 solveCG_MG(Ar,MG,b,x,true)
 toc()
 
-MG.innerIter = 10;
 println("****************************** GMRES preconditioned with AMG: (only one rhs...) ******************************")
 x[:] = 0.0;
 b = vec(b[:,1]);
 x = zeros(N);
 tic()
-solveGMRES_MG(Ar,MG,b,x,true)
+solveGMRES_MG(Ar,MG,b,x,true,10)
 toc()
 
 Ar = 0;
@@ -63,7 +61,7 @@ m  = exp(randn(prod(n)));
 Ar = getDivSigGradMatrix(vec(m),Mr);
 Ar = Ar + 1e-6*norm(Ar,1)*speye(size(Ar,2));
 
-MG = getMGparam(levels,numCores,maxIter,innerIter,relativeTol,relaxType,relaxParam,relaxPre,relaxPost,cycleType,coarseSolveType);
+MG = getMGparam(levels,numCores,maxIter,relativeTol,relaxType,relaxParam,relaxPre,relaxPost,cycleType,coarseSolveType);
 
 N = size(Ar,2);
 b = Ar*rand(N,3);
