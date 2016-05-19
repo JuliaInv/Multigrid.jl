@@ -46,16 +46,9 @@ end
 return solveGMRES_MG(ATfun,param,b,x0,verbose);
 end
 
-function solveGMRES_MG(mulAT::Function,param::MGparam,b::ArrayTypes,x0::ArrayTypes,verbose::Bool = false)
-
+function solveGMRES_MG(mulAT::Function,param::MGparam,b::ArrayTypes,x0::ArrayTypes,verbose::Bool = false,inner=3)
 param = adjustMemoryForNumRHS(param,eltype(b),size(b,2));
-
 outerIter = param.maxOuterIter;
-inner = param.innerIter;
-if inner <= 0
-	error("This is a GMRES-MG solver but innerIter <=0 ");
-end
-
 nrhs = size(b,2);
 N 	 = size(b,1);
 rhsType = eltype(b);
