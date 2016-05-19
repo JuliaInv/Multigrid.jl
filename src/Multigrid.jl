@@ -1,8 +1,4 @@
-
 module Multigrid
-export MGparam;
-export getMGparam,MGsetup, clear!
-export BlockFGMRES,ArrayTypes,hierarchyExists,copySolver,destroyCoarsestLU
 
 using jInv.Mesh;
 using KrylovMethods
@@ -33,6 +29,10 @@ end
 if hasParSpMatVec
 	using ParSpMatVec
 end
+
+export MGparam;
+export getMGparam,MGsetup, clear!
+export BlockFGMRES,ArrayTypes,hierarchyExists,copySolver,destroyCoarsestLU
 
 
 SparseCSCTypes = Union{SparseMatrixCSC{Complex128,Int64},SparseMatrixCSC{Float64,Int64}}
