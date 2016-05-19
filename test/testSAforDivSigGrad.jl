@@ -14,7 +14,6 @@ Ar = Ar + 1e-8*norm(Ar,1)*speye(size(Ar,2));
 levels      = 3;
 numCores 	= 8; 
 maxIter     = 3;
-innerIter   = 0;
 relativeTol = 1e-10;
 relaxType   = "SPAI";
 relaxParam  = 1.0;
@@ -23,7 +22,7 @@ relaxPost   = 2;
 cycleType   ='V';
 coarseSolveType = "NoMUMPS";
 
-MG = getMGparam(levels,numCores,maxIter,innerIter,relativeTol,relaxType,relaxParam,relaxPre,relaxPost,cycleType,coarseSolveType);
+MG = getMGparam(levels,numCores,maxIter,relativeTol,relaxType,relaxParam,relaxPre,relaxPost,cycleType,coarseSolveType);
 
 N = size(Ar,2);
 
@@ -44,18 +43,17 @@ solveBiCGSTAB_MG(Ar,MG,b,x,true);
 println("****************************** transposeHierarchy *********************************");
 transposeHierarchy(MG,true);
 
-MG.innerIter = 2;
 
 println("****************************** GMRES preconditioned with AMG: (only one rhs...) ******************************")
 x[:] = 0.0;
 b1 = vec(b[:,1]);
 x1 = zeros(N);
-solveGMRES_MG(Ar,MG,b1,x1,true)
+solveGMRES_MG(Ar,MG,b1,x1,true,2)
 
 MG = getMGparam(levels,numCores,maxIter,3,relativeTol,"Jac-GMRES",relaxParam,relaxPre,relaxPost,'K',coarseSolveType);
 SA_AMGsetup(Ar,MG,Float64,true,size(b,2),true);
 x[:] = 0.0;
-solveGMRES_MG(Ar,MG,b,x,true)
+solveGMRES_MG(Ar,MG,b,x,true,2)
 
 Ar = 0;
 b = 0;
