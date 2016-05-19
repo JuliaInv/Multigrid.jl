@@ -1,10 +1,10 @@
 export MGsetup,transposeHierarchy,adjustMemoryForNumRHS
 
-function MGsetup(Msh::RegularMesh,AT::SparseMatrixCSC,param::MGparam,rhsType::DataType = Float64,nrhs::Int64 = 1,verbose::Bool=false)
+function MGsetup(AT::SparseMatrixCSC,param::MGparam,rhsType::DataType = Float64,nrhs::Int64 = 1,verbose::Bool=false)
 Ps = Array(SparseMatrixCSC,param.levels-1);
 Rs = Array(SparseMatrixCSC,param.levels-1);
 As = Array(SparseMatrixCSC,param.levels);
-n = Msh.n + 1; # n here is the number of NODES!!!
+n = param.Mesh.n + 1; # n here is the number of NODES!!!
 N = prod(n);
 As[1] = AT;
 relaxPrecs = Array(SparseMatrixCSC,param.levels-1);
@@ -96,7 +96,11 @@ N = size(param.As[1],2);
 
 for l = 1:(param.levels-1)
 	N = size(param.As[l],2);
-	memCycle[l] = getCYCLEmem(N,nrhs,rhsType,true);
+	if l==1
+		memCycle[l] = getCYCLEmem(N,nrhs,rhsType,false); # we don't need a memory allocate for b.
+	else
+		memCycle[l] = getCYCLEmem(N,nrhs,rhsType,true);
+	end
 	if param.relaxType=="Jac-GMRES"
 		maxRelax = max(param.relaxPre(l),param.relaxPost(l));
 		if nrhs == 1
@@ -115,6 +119,7 @@ for l = 1:(param.levels-1)
 	end
 end
 memCycle[end] = getCYCLEmem(size(param.As[end],2),nrhs,rhsType,false); # no need for residual on the coarsest level...
+memCycle[end].b = memCycle[end].r;
 param.memRelax = memRelax;
 param.memKcycle = memKcycle;
 param.memCycle = memCycle;

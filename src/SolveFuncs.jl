@@ -8,7 +8,7 @@ const oneType = one(eltype(b));
 const zeroType = zero(eltype(b));
 maxIter = param.maxOuterIter;
 A = param.As[1];
-r = param.memCycle[1].b;
+r = param.memCycle[1].r;
 oneType = one(eltype(b));
 r[:] = b;
 
@@ -37,6 +37,32 @@ end
 return x,param;
 end
 ####################################################################################################################
+
+function getMultigridPreconditioner(param::MGparam,B::ArrayTypes,forTransposed::Bool=false,verbose::Bool=false)
+	TYPE = eltype(B);
+	n = size(B,1)
+	nrhs = size(B,2)
+	if hierarchyExists(param)==false
+		println("You have to do a setup first.")
+	end
+	param = adjustMemoryForNumRHS(param,TYPE,nrhs);
+	if (forTransposed != param.doTranspose)
+		transposeHierarchy(param);
+	end
+	z = param.memCycle[1].x;
+	MMG(b) = (z[:] = 0.0; recursiveCycle(param,b,z,1));
+	return MMG;
+end
+
+function getAfun(AT::SparseMatrixCSC,Az::Array,numCores::Int64)
+	function Afun(z::ArrayTypes)
+		SpMatMul(AT,z,Az,numCores);
+		return Az;
+	end
+	return Afun;
+end
+
+####################################################################################################################
 function solveGMRES_MG(AT::SparseCSCTypes,param::MGparam,b::ArrayTypes,x0::ArrayTypes,verbose::Bool = false,inner=3)
 function ATfun(alpha,z::ArrayTypes,beta,w::ArrayTypes)
 	w = SpMatMul(alpha,AT,z,beta,w,param.numCores);
@@ -62,10 +88,9 @@ end
 
 numCores = param.numCores;
 
-r = param.memCycle[1].b;
 oneType = one(eltype(b));
 
-r[:] = b;
+r = copy(b);
 MMG(x,y) = (y[:] = 0.0; recursiveCycle(param,x,y,1));
 
 x = param.memCycle[1].x;
@@ -111,24 +136,16 @@ end
 return x,param,num_iter;
 end
 
-function solveBiCGSTAB_MG(AT::SparseCSCTypes,param::MGparam,b::ArrayTypes,x0::ArrayTypes,verbose::Bool = false) 
-	Az = param.memCycle[1].b;
-	function Afun(z::ArrayTypes)
-		SpMatMul(AT,z,Az,param.numCores);
-		return Az;
-	end
-	return solveBiCGSTAB_MG(Afun,param,b,x0,verbose);
+function solveBiCGSTAB_MG(AT::SparseCSCTypes,param::MGparam,b::ArrayTypes,x0::ArrayTypes,verbose::Bool = false)
+	return solveBiCGSTAB_MG(getAfun(AT,zeros(eltype(b),size(b,1),size(b,2)),param.numCores),param,b,x0,verbose);
 end
 
 function solveBiCGSTAB_MG(Afun::Function,param::MGparam,b::ArrayTypes,x0::ArrayTypes,verbose::Bool = false)
-param = adjustMemoryForNumRHS(param,eltype(b),size(b,2));
+MMG = getMultigridPreconditioner(param,b,false,verbose);
 if verbose
 	out = 1;
 end
-nrhs = size(b,2);
-z = param.memCycle[1].x;
-MMG(b) = (z[:] = 0.0; recursiveCycle(param,b,z,1));
-if nrhs==1
+if size(b,2)==1
 	x, flag,rnorm,iter = KrylovMethods.bicgstb(Afun,b,tol = param.relativeTol,maxIter = param.maxOuterIter,M1 = MMG,M2 = identity, x = x0,out=out);
 else
 	x, flag,rnorm,iter = KrylovMethods.blockBiCGSTB(Afun,b,tol = param.relativeTol,maxIter = param.maxOuterIter,M1 = MMG,M2 = identity, x = x0,out=out);
@@ -137,24 +154,15 @@ return x,param,iter;
 end
 
 function solveCG_MG(AT::SparseCSCTypes,param::MGparam,b::ArrayTypes,x0::ArrayTypes,verbose::Bool = false) 
-	Az = param.memCycle[1].b;
-	function Afun(z::ArrayTypes)
-		SpMatMul(AT,z,Az,param.numCores);
-		return Az;
-	end
-	return solveCG_MG(Afun,param,b,x0,verbose);
+	return solveCG_MG(getAfun(AT,zeros(eltype(b),size(b,1),size(b,2)),param.numCores),param,b,x0,verbose);
 end
 
-
 function solveCG_MG(Afun::Function,param::MGparam,b::ArrayTypes,x0::ArrayTypes,verbose::Bool = false)
-param = adjustMemoryForNumRHS(param,eltype(b),size(b,2));
+MMG = getMultigridPreconditioner(param,b,false,verbose);
 if verbose
 	out = 1;
 end
-nrhs = size(b,2);
-z = param.memCycle[1].x;
-MMG(b) = (z[:] = 0.0; recursiveCycle(param,b,z,1));
-if nrhs==1
+if size(b,2)==1
 	x, flag,rnorm,iter = KrylovMethods.cg(Afun,b,tol = param.relativeTol,maxIter = param.maxOuterIter,M = MMG, x = x0,out=out);
 else
 	x, flag,rnorm,iter = KrylovMethods.blockCG(Afun,b,tol = param.relativeTol,maxIter = param.maxOuterIter,M = MMG, X = x0,out=out);

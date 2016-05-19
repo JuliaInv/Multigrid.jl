@@ -1,8 +1,6 @@
 module Multigrid
-
 using jInv.Mesh;
 using KrylovMethods
-
 
 # check if MUMPS can be used
 const minMUMPSversion = VersionNumber(0,0,1)
@@ -30,7 +28,7 @@ catch
 end
 if hasParSpMatVec
 	using ParSpMatVec
-	println("USING ParSpMatVec!!!")
+	# println("USING ParSpMatVec!!!")
 end
 
 export MGparam;
@@ -74,7 +72,8 @@ type MGparam
 	LU														# Factorization of coarsest level.
 	doTranspose			:: Int64
 	strongConnParam		:: Float64							# (for SA-AMG only) A threshold for determining a strong connection should >0.25, and <0.85. 
-	FilteringParam		:: Float64							# (for SA-AMG only) A threshold for prolongation filtering >0.0, and <0.2. 
+	FilteringParam		:: Float64							# (for SA-AMG only) A threshold for prolongation filtering >0.0, and <0.2.
+	Mesh													# Regular Mesh for geometric multigrid.
 end
 
 include("MGsetup.jl");
@@ -85,36 +84,36 @@ include("SolveFuncs.jl");
 function copySolver(MG::MGparam)
 # copies the solver parameters without the setup and allocated memory.
 return getMGparam(MG.levels,MG.numCores,MG.maxOuterIter,MG.relativeTol,MG.relaxType,MG.relaxParam,
-					MG.relaxPre,MG.relaxPost,MG.cycleType,MG.coarseSolveType,MG.strongConnParam,MG.FilteringParam);
+					MG.relaxPre,MG.relaxPost,MG.cycleType,MG.coarseSolveType,MG.strongConnParam,MG.FilteringParam,MG.Mesh);
 end
 
 
 
 function getMGparam(levels::Int64,numCores::Int64,maxIter::Int64,relativeTol:: Float64,relaxType::ASCIIString,relaxParam::Float64,
-					relaxPre::Function,relaxPost::Function,cycleType::Char='V',coarseSolveType::ASCIIString="NoMUMPS",strongConnParam::Float64=0.5,FilteringParam::Float64 = 0.0)
+					relaxPre::Function,relaxPost::Function,cycleType::Char='V',coarseSolveType::ASCIIString="NoMUMPS",strongConnParam::Float64=0.5,FilteringParam::Float64 = 0.0,Mesh = [])
 return MGparam(levels,numCores,maxIter,relativeTol,relaxType,relaxParam,relaxPre,relaxPost,cycleType,[],[],[],[],Array(CYCLEmem,0),
-				Array(FGMRESmem,0),Array(FGMRESmem,0),coarseSolveType,[],0,strongConnParam,FilteringParam);
+				Array(FGMRESmem,0),Array(FGMRESmem,0),coarseSolveType,[],0,strongConnParam,FilteringParam,Mesh);
 end
 					
 function getMGparam(levels::Int64=3,numCores::Int64=8,maxIter::Int64=20,relativeTol::Float64=1e-6,relaxType::ASCIIString="SPAI",relaxParam::Float64=1.0,
-					relaxPre::Int64=2,relaxPost::Int64=2,cycleType::Char='V',coarseSolveType::ASCIIString="NoMUMPS",strongConnParam::Float64=0.5,FilteringParam::Float64 = 0.0)
+					relaxPre::Int64=2,relaxPost::Int64=2,cycleType::Char='V',coarseSolveType::ASCIIString="NoMUMPS",strongConnParam::Float64=0.5,FilteringParam::Float64 = 0.0,Mesh = [])
 relaxPreFun(x) = relaxPre;
 relaxPostFun(x) = relaxPost;
-return getMGparam(levels,numCores,maxIter,relativeTol,relaxType,relaxParam,relaxPreFun,relaxPostFun,cycleType,coarseSolveType,strongConnParam,FilteringParam);
+return getMGparam(levels,numCores,maxIter,relativeTol,relaxType,relaxParam,relaxPreFun,relaxPostFun,cycleType,coarseSolveType,strongConnParam,FilteringParam,Mesh);
 end
 					
-function getCYCLEmem(n::Int64,m::Int64,T::Type,withRes::Bool=true)
-r = zeros(T,0);
+function getCYCLEmem(n::Int64,m::Int64,T::Type,withB::Bool=true)
+b = zeros(T,0);
 if m==1
-	if withRes
-		r = zeros(T,n);
+	if withB
+		b = zeros(T,n);
 	end
-	return CYCLEmem(zeros(T,n),r,zeros(T,n));
+	return CYCLEmem(b,zeros(T,n),zeros(T,n));
 else
-	if withRes
-		r = zeros(T,n,m);
+	if withB
+		b = zeros(T,n,m);
 	end
-	return CYCLEmem(zeros(T,n,m),r,zeros(T,n,m));
+	return CYCLEmem(b,zeros(T,n,m),zeros(T,n,m));
 end
 end
 import jInv.Utils.clear!
