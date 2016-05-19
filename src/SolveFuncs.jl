@@ -68,10 +68,7 @@ else
 	GMRES_MEM = getBlockFGMRESmem(N,nrhs,flexible,rhsType,inner);
 end
 
-
 numCores = param.numCores;
-
-
 
 r = param.memCycle[1].b;
 oneType = one(eltype(b));
@@ -131,31 +128,22 @@ function solveBiCGSTAB_MG(AT::SparseCSCTypes,param::MGparam,b::ArrayTypes,x0::Ar
 	return solveBiCGSTAB_MG(Afun,param,b,x0,verbose);
 end
 
-
 function solveBiCGSTAB_MG(Afun::Function,param::MGparam,b::ArrayTypes,x0::ArrayTypes,verbose::Bool = false)
 param.innerIter = 0;
 param = adjustMemoryForNumRHS(param,eltype(b),size(b,2));
-
 if verbose
 	out = 1;
 end
-
-numCores = param.numCores;
 nrhs = size(b,2);
-
-oneType = one(eltype(b));
 z = param.memCycle[1].x;
 MMG(b) = (z[:] = 0.0; recursiveCycle(param,b,z,1));
-
 if nrhs==1
 	x, flag,rnorm,iter = KrylovMethods.bicgstb(Afun,b,tol = param.relativeTol,maxIter = param.maxOuterIter,M1 = MMG,M2 = identity, x = x0,out=out);
 else
 	x, flag,rnorm,iter = KrylovMethods.blockBiCGSTB(Afun,b,tol = param.relativeTol,maxIter = param.maxOuterIter,M1 = MMG,M2 = identity, x = x0,out=out);
 end
-
 return x,param,iter;
 end
-
 
 function solveCG_MG(AT::SparseCSCTypes,param::MGparam,b::ArrayTypes,x0::ArrayTypes,verbose::Bool = false) 
 	Az = param.memCycle[1].b;
@@ -170,26 +158,16 @@ end
 function solveCG_MG(Afun::Function,param::MGparam,b::ArrayTypes,x0::ArrayTypes,verbose::Bool = false)
 param.innerIter = 0;
 param = adjustMemoryForNumRHS(param,eltype(b),size(b,2));
-
 if verbose
 	out = 1;
 end
-
-numCores = param.numCores;
 nrhs = size(b,2);
-
-oneType = one(eltype(b));
 z = param.memCycle[1].x;
 MMG(b) = (z[:] = 0.0; recursiveCycle(param,b,z,1));
-
 if nrhs==1
 	x, flag,rnorm,iter = KrylovMethods.cg(Afun,b,tol = param.relativeTol,maxIter = param.maxOuterIter,M = MMG, x = x0,out=out);
 else
 	x, flag,rnorm,iter = KrylovMethods.blockCG(Afun,b,tol = param.relativeTol,maxIter = param.maxOuterIter,M = MMG, X = x0,out=out);
 end
-
 return x,param,iter;
 end
-
-
-
