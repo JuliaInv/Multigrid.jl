@@ -35,17 +35,13 @@ solveMG(MG,b,x,true);
 
 x[:] = 0.0;
 println("****************************** CG preconditioned with AMG: ******************************")
-tic()
 solveCG_MG(Ar,MG,b,x,true)
-toc()
 
 println("****************************** GMRES preconditioned with AMG: (only one rhs...) ******************************")
 x[:] = 0.0;
 b = vec(b[:,1]);
 x = zeros(N);
-tic()
 solveGMRES_MG(Ar,MG,b,x,true,10)
-toc()
 
 Ar = 0;
 b = 0;
@@ -66,7 +62,6 @@ MG = getMGparam(levels,numCores,maxIter,relativeTol,relaxType,relaxParam,relaxPr
 N = size(Ar,2);
 b = Ar*rand(N,3);
 x = zeros(N,3);
-
 
 SA_AMGsetup(Ar,MG,Float64,true,size(b,2),true);
 println("Stand-alone AMG:")

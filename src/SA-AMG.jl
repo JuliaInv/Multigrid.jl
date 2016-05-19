@@ -1,5 +1,11 @@
 export SA_AMGsetup;
 
+"""
+Based on the paper 
+Eran Treister and Irad Yavneh, Non-Galerkin Multigrid based on Sparsified Smoothed Aggregation. 
+SIAM Journal on Scientific Computing, 37 (1), A30-A54, 2015.
+"""
+
 function SA_AMGsetup(AT::SparseMatrixCSC,param::MGparam,rhsType::DataType = Float64,symm::Bool = true,nrhs::Int64 = 1,verbose::Bool=false)
 Ps = Array(SparseMatrixCSC,param.levels-1);
 Rs = Array(SparseMatrixCSC,param.levels-1);
