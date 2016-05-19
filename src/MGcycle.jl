@@ -64,7 +64,7 @@ else
     if param.cycleType == 'K'
 		MMG(x,y) = (y[:] = 0.0; recursiveCycle(param,x,y,level+1)); # x does not change...
 		if nrhs==1
-			xc = FGMRES(Ac,bc,xc,2,MMG,gmresTol,false,true,numCores,param.memKcycle[level+1])[1];
+			xc = FGMRES_relaxation(Ac,bc,xc,2,MMG,gmresTol,false,true,numCores,param.memKcycle[level+1])[1];
 		else
 			xc = BlockFGMRES_primitive(Ac,bc,xc,2,MMG,gmresTol,false,true,numCores,param.memKcycle[level+1])[1];
 		end

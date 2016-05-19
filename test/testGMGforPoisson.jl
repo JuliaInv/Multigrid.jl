@@ -37,6 +37,8 @@ solveMG(MG,b,x,true);
 MG.innerIter = 2;
 println("****************************** GMRES preconditioned with GMG: (only one rhs...) ******************************")
 x[:] = 0.0
+b = vec(b[:,1]);
+x = vec(x[:,1]);
 solveGMRES_MG(Ar,MG,b,x,true)
 
 Ar = 0;
