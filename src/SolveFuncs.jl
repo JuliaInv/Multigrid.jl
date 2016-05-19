@@ -1,7 +1,6 @@
 export solveMG,solveGMRES_MG,solveBiCGSTAB_MG,solveCG_MG
 
 function solveMG(param::MGparam,b::ArrayTypes,x::ArrayTypes,verbose::Bool)
-param.innerIter = 0;
 param = adjustMemoryForNumRHS(param,eltype(b),size(b,2));
 tol = param.relativeTol;
 numCores = param.numCores;
@@ -38,12 +37,12 @@ end
 return x,param;
 end
 ####################################################################################################################
-function solveGMRES_MG(AT::SparseCSCTypes,param::MGparam,b::ArrayTypes,x0::ArrayTypes,verbose::Bool = false)
+function solveGMRES_MG(AT::SparseCSCTypes,param::MGparam,b::ArrayTypes,x0::ArrayTypes,verbose::Bool = false,inner=3)
 function ATfun(alpha,z::ArrayTypes,beta,w::ArrayTypes)
 	w = SpMatMul(alpha,AT,z,beta,w,param.numCores);
 	return w;
 end
-return solveGMRES_MG(ATfun,param,b,x0,verbose);
+return solveGMRES_MG(ATfun,param,b,x0,verbose,inner);
 end
 
 function solveGMRES_MG(mulAT::Function,param::MGparam,b::ArrayTypes,x0::ArrayTypes,verbose::Bool = false,inner=3)
@@ -122,7 +121,6 @@ function solveBiCGSTAB_MG(AT::SparseCSCTypes,param::MGparam,b::ArrayTypes,x0::Ar
 end
 
 function solveBiCGSTAB_MG(Afun::Function,param::MGparam,b::ArrayTypes,x0::ArrayTypes,verbose::Bool = false)
-param.innerIter = 0;
 param = adjustMemoryForNumRHS(param,eltype(b),size(b,2));
 if verbose
 	out = 1;
@@ -149,7 +147,6 @@ end
 
 
 function solveCG_MG(Afun::Function,param::MGparam,b::ArrayTypes,x0::ArrayTypes,verbose::Bool = false)
-param.innerIter = 0;
 param = adjustMemoryForNumRHS(param,eltype(b),size(b,2));
 if verbose
 	out = 1;

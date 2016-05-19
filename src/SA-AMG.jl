@@ -26,8 +26,7 @@ for l = 1:(param.levels-1)
 	else
 		error("Unknown relaxation type !!!!");
 	end
-	# param.strengthConnParam
-	P0 = getAggregation(AT,0.5);
+	P0 = getAggregation(AT,param.strongConnParam);
 	Nc = size(P0,2);
 	P0 = P0';
 	if (size(P0,1)==size(P0,2))

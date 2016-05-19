@@ -9,7 +9,7 @@ n = [100,100];
 Mr = getRegularMesh(domain,n)
 m  = exp(5*randn(prod(n)));
 Ar = getDivSigGradMatrix(vec(m),Mr);
-Ar = Ar + 1e-8*norm(Ar,1)*speye(size(Ar,2));
+Ar = Ar + 1e-6*norm(Ar,1)*speye(size(Ar,2));
 
 levels      = 3;
 numCores 	= 8; 
