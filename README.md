@@ -1,4 +1,6 @@
-[![Build Status](https://travis-ci.org/JuliaInv/Multigrid.jl.svg?branch=master)](https://travis-ci.org/JuliaInv/Multigrid.jl) [![Coverage Status](https://coveralls.io/repos/github/JuliaInv/Multigrid.jl/badge.svg?branch=master)](https://coveralls.io/github/JuliaInv/Multigrid.jl?branch=master)
+[![Build Status](https://travis-ci.org/JuliaInv/Multigrid.jl.svg?branch=master)](https://travis-ci.org/JuliaInv/Multigrid.jl)
+
+[![Coverage Status](https://coveralls.io/repos/github/JuliaInv/Multigrid.jl/badge.svg?branch=master)](https://coveralls.io/github/JuliaInv/Multigrid.jl?branch=master)
 
 # Multigrid.jl
 
