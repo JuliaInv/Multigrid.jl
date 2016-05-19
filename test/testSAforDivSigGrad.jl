@@ -36,18 +36,26 @@ solveMG(MG,b,x,true);
 
 x[:] = 0.0;
 println("****************************** CG preconditioned with AMG: ******************************")
-tic()
 solveCG_MG(Ar,MG,b,x,true)
-toc()
 
-MG.innerIter = 3;
+println("****************************** CG preconditioned with BiCGSTAB: ******************************")
+solveBiCGSTAB_MG(Ar,MG,b,x,true);
+
+println("****************************** transposeHierarchy *********************************");
+transposeHierarchy(MG,true);
+
+MG.innerIter = 2;
+
 println("****************************** GMRES preconditioned with AMG: (only one rhs...) ******************************")
 x[:] = 0.0;
-b = vec(b[:,1]);
-x = zeros(N);
-tic()
+b1 = vec(b[:,1]);
+x1 = zeros(N);
+solveGMRES_MG(Ar,MG,b1,x1,true)
+
+MG = getMGparam(levels,numCores,maxIter,3,relativeTol,"Jac-GMRES",relaxParam,relaxPre,relaxPost,'K',coarseSolveType);
+SA_AMGsetup(Ar,MG,Float64,true,size(b,2),true);
+x[:] = 0.0;
 solveGMRES_MG(Ar,MG,b,x,true)
-toc()
 
 Ar = 0;
 b = 0;

@@ -15,11 +15,11 @@ numCores 	= 8;
 maxIter     = 3;
 innerIter   = 0;
 relativeTol = 1e-10;
-relaxType   = "SPAI";
+relaxType   = "Jac-GMRES";
 relaxParam  = 1.0;
 relaxPre 	= 2;
 relaxPost   = 2;
-cycleType   ='V';
+cycleType   ='W';
 coarseSolveType = "NoMUMPS";
 
 MG = getMGparam(levels,numCores,maxIter,innerIter,relativeTol,relaxType,relaxParam,relaxPre,relaxPost,cycleType,coarseSolveType);
@@ -34,22 +34,16 @@ MGsetup(Mr,Ar,MG,Float64,size(b,2),true);
 println("****************************** Stand-alone GMG: ******************************")
 solveMG(MG,b,x,true);
 
-x[:] = 0.0;
-println("****************************** CG preconditioned with GMG: ******************************")
-tic()
-solveCG_MG(Ar,MG,b,x,true)
-toc()
-
-MG.innerIter = 3;
+MG.innerIter = 2;
 println("****************************** GMRES preconditioned with GMG: (only one rhs...) ******************************")
-x[:] = 0.0;
-b = vec(b[:,1]);
-x = zeros(N);
-tic()
+x[:] = 0.0
 solveGMRES_MG(Ar,MG,b,x,true)
-toc()
 
 Ar = 0;
 b = 0;
 x = 0;
 Mr = 0;
+
+copySolver(MG);
+destroyCoarsestLU(MG);
+clear!(MG)

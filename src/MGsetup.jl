@@ -67,13 +67,15 @@ return;
 end
 
 function adjustMemoryForNumRHS(param::MGparam,rhsType::DataType = Float64,nrhs::Int64 = 1,verbose::Bool=false)
+if length(param.As)==0
+	error("The Hierarchy is empty - run a setup first.")
+end
 
-if length(param.memCycle) > 0
+if length(param.memCycle) > 0	
 	if size(param.memCycle[1].x,2) == nrhs
 		return param;
 	end
 end
-
 if nrhs==1
 	memRelax = Array(FGMRESmem,param.levels-1);
 	memKcycle = Array(FGMRESmem,param.levels-2);
@@ -81,11 +83,14 @@ else
 	memRelax = Array(BlockFGMRESmem,param.levels-1);
 	memKcycle = Array(BlockFGMRESmem,param.levels-2); 
 end	
+
 memCycle = Array(CYCLEmem,param.levels);
 
 param.memRelax  = memRelax;
 param.memKcycle = memKcycle;
 param.memCycle  = memCycle;
+
+
 
 N = size(param.As[1],2); 
 
@@ -142,7 +147,6 @@ for l = 1:(param.levels-1)
 end
 if verbose 
 	tic()
-	println("MG setup: coarsest: ",n);
 end
 if param.coarseSolveType == "MUMPS"
 	# when applying mumps, no need to transpose the matrix
@@ -158,7 +162,7 @@ else
 	param.LU = lufact(param.As[end]');
 end
 if verbose 
-	println("MG setup: done LU");
+	println("MG transpose hierarchy: done LU");
 	toc();
 end
 return;

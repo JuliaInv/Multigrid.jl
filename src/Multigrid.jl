@@ -89,7 +89,7 @@ end
 
 function getMGparam(levels::Int64,numCores::Int64,maxIter::Int64,innerIter::Int64,relativeTol:: Float64,relaxType::ASCIIString,relaxParam::Float64,
 					relaxPre::Function,relaxPost::Function,cycleType::Char='V',coarseSolveType::ASCIIString="NoMUMPS")
-return MGparam(levels,numCores,maxIter,innerIter,relativeTol,relaxType,relaxParam,relaxPre,relaxPost,cycleType,[],[],[],[],[],
+return MGparam(levels,numCores,maxIter,innerIter,relativeTol,relaxType,relaxParam,relaxPre,relaxPost,cycleType,[],[],[],[],Array(CYCLEmem,0),
 				Array(FGMRESmem,0),Array(FGMRESmem,0),coarseSolveType,[],0);
 end
 					

@@ -50,7 +50,6 @@ function solveGMRES_MG(mulAT::Function,param::MGparam,b::ArrayTypes,x0::ArrayTyp
 
 param = adjustMemoryForNumRHS(param,eltype(b),size(b,2));
 
-# println("using primitive");
 outerIter = param.maxOuterIter;
 inner = param.innerIter;
 if inner <= 0
