@@ -154,6 +154,7 @@ else
 	return CYCLEmem(b,zeros(T,n,m),zeros(T,n,m));
 end
 end
+
 import jInv.Utils.clear!
 function clear!(param::MGparam)
 param.Ps = Array(SparseMatrixCSC,0);
@@ -164,7 +165,7 @@ param.memCycle = Array(CYCLEmem,0);
 param.memRelax = Array(FGMRESmem,0);
 param.memKcycle = Array(FGMRESmem,0);
 destroyCoarsestLU(param);
-clear(Mesh);
+clear!(param.Mesh);
 end
 
 function destroyCoarsestLU(param::MGparam)
