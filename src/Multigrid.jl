@@ -43,37 +43,71 @@ include("SpMatMul.jl");
 include("FGMRES.jl");
 include("BlockFGMRES.jl");
 
+"""
+type Multigrid.CYCLEmem
+	
+Fields:
 
+	b::ArrayTypes - memory for the right-hand-side
+	r::ArrayTypes - memory for the residual
+	x::ArrayTypes - memory for the iterated solution
+"""
 type CYCLEmem
-	b 					::ArrayTypes; 						# memory for the right-hand-side.
-	r					::ArrayTypes; 						# memory for the residual.
-	x					::ArrayTypes; 						# memory for the iterated solution.
+	b 					::ArrayTypes
+	r					::ArrayTypes
+	x					::ArrayTypes
 end
 
- 
+"""
+type Multigrid.MGparam
+	
+Fields:
+
+	levels::Int64            - Maximum number of multigrid levels
+	numCores::Int64          - Number of OMP cores to work with. Some operations (setup) are not parallelized.
+	maxOuterIter::Int64      - Maximum outer iterations.
+	relativeTol::Float64	 - Relative L2/Frobenius norm stopping criterion.
+	relaxType:: ASCIIString	 - Relax type. Can be "Jac", "Jac-GMRES" or "SPAI". 
+	relaxParam::Float64	     - Relax damping parameter. 
+	relaxPre::Function 	     - pre and post relaxation numbers
+	relaxPost::Function	     - Can be 'V', 'F', 'W', 'K' (Krylov cycles are done with FGMRES).
+	Ps::Array{SparseMatrixCSC{Float64}} - all matrices here are transposed/conjugated so that parallel multiplication is efficient
+	Rs::Array{SparseMatrixCSC{Float64}} - all matrices here are transposed/conjugated so that parallel multiplication is efficient
+	As::Array{SparseCSCTypes} - all matrices here are transposed/conjugated so that parallel multiplication is efficient
+	relaxPrecs -  an array of relaxation preconditioners for all levels.
+	memCycle::Array{CYCLEmem} - Space for x,b and r for each level.			
+	memRelax::Union{Array{FGMRESmem},Array{BlockFGMRESmem}}  - This is used just in case of GMRES relaxation.
+	memKcycle::Union{Array{FGMRESmem},Array{BlockFGMRESmem}} - Memory for the Krylov-cycle FGMRES. First field is ignored.
+	coarseSolveType::ASCIIString - Can be "MUMPS" or "NoMUMPS" for Julia backslash.
+	LU - Factorization of coarsest level.
+	doTranspose::Int64
+	strongConnParam::Float64 - (for SA-AMG only) A threshold for determining a strong connection should >0.25, and <0.85. 
+	FilteringParam::Float64	 - (for SA-AMG only) A threshold for prolongation filtering >0.0, and <0.2.
+	Mesh					 - Regular Mesh for geometric multigrid.
+""" 
 type MGparam
-	levels				:: Int64							# Maximum number of multigrid levels.
-	numCores			:: Int64							# Number of OMP cores to work with. Some operations (setup) are not parallelized.
-	maxOuterIter		:: Int64							# Maximum outer iterations.
-	relativeTol			:: Float64							# Relative L2/Frobenius norm stopping criterion.
-	relaxType		    :: ASCIIString						# Relax type. Can be "Jac", "Jac-GMRES" or "SPAI". 
-	relaxParam			:: Float64							# Relax damping parameter. 
-	relaxPre			:: Function 						# pre and post relaxation numbers
-	relaxPost			:: Function							# These are functions to enable the pre and post relaxations to vary between the levels...
-	cycleType			:: Char								# Can be 'V', 'F', 'W', 'K' (Krylov cycles are done with FGMRES).
-	Ps					:: Array{SparseMatrixCSC{Float64}}  # all matrices here are transposed/conjugated so that parallel multiplication is efficient
-	Rs					:: Array{SparseMatrixCSC{Float64}}  # all matrices here are transposed/conjugated so that parallel multiplication is efficient
-	As					:: Array{SparseCSCTypes} 		    # all matrices here are transposed/conjugated so that parallel multiplication is efficient
-	relaxPrecs												# an array of relaxation preconditioners for all levels.
-	memCycle			:: Array{CYCLEmem}					# Space for x,b and r for each level.			
-	memRelax			:: Union{Array{FGMRESmem},Array{BlockFGMRESmem}}     # This is used just in case of GMRES relaxation.
-	memKcycle			:: Union{Array{FGMRESmem},Array{BlockFGMRESmem}}     # Memory for the Krylov-cycle FGMRES. First field is ignored.
-	coarseSolveType		:: ASCIIString						# Can be "MUMPS" or "NoMUMPS" for Julia backslash.
-	LU														# Factorization of coarsest level.
-	doTranspose			:: Int64
-	strongConnParam		:: Float64							# (for SA-AMG only) A threshold for determining a strong connection should >0.25, and <0.85. 
-	FilteringParam		:: Float64							# (for SA-AMG only) A threshold for prolongation filtering >0.0, and <0.2.
-	Mesh													# Regular Mesh for geometric multigrid.
+	levels				:: Int64
+	numCores			:: Int64
+	maxOuterIter		:: Int64
+	relativeTol			:: Float64
+	relaxType		    :: ASCIIString
+	relaxParam			:: Float64
+	relaxPre			:: Function
+	relaxPost			:: Function
+	cycleType			:: Char
+	Ps					:: Array{SparseMatrixCSC{Float64}}
+	Rs					:: Array{SparseMatrixCSC{Float64}}
+	As					:: Array{SparseCSCTypes}
+	relaxPrecs
+	memCycle			:: Array{CYCLEmem}
+	memRelax			:: Union{Array{FGMRESmem},Array{BlockFGMRESmem}}
+	memKcycle			:: Union{Array{FGMRESmem},Array{BlockFGMRESmem}}
+	coarseSolveType		:: ASCIIString
+	LU
+	doTranspose		:: Int64
+	strongConnParam		:: Float64
+	FilteringParam		:: Float64
+	Mesh
 end
 
 include("MGsetup.jl");
@@ -81,8 +115,12 @@ include("SA-AMG.jl");
 include("MGcycle.jl");
 include("SolveFuncs.jl");
 
+"""
+function Multigrid.copySolver(MG::MGparam)
+
+copies the solver parameters without the setup and allocated memory.
+"""
 function copySolver(MG::MGparam)
-# copies the solver parameters without the setup and allocated memory.
 return getMGparam(MG.levels,MG.numCores,MG.maxOuterIter,MG.relativeTol,MG.relaxType,MG.relaxParam,
 					MG.relaxPre,MG.relaxPost,MG.cycleType,MG.coarseSolveType,MG.strongConnParam,MG.FilteringParam,MG.Mesh);
 end
