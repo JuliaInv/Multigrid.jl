@@ -126,6 +126,7 @@ param.memCycle = Array(CYCLEmem,0);
 param.memRelax = Array(FGMRESmem,0);
 param.memKcycle = Array(FGMRESmem,0);
 destroyCoarsestLU(param);
+clear(Mesh);
 end
 
 function destroyCoarsestLU(param::MGparam)

@@ -51,6 +51,8 @@ function getMultigridPreconditioner(param::MGparam,B::ArrayTypes,forTransposed::
 	end
 	z = param.memCycle[1].x;
 	MMG(b) = (z[:] = 0.0; recursiveCycle(param,b,z,1));
+	# MMG(b) = (z = copy(b);z[:] = 0.0; recursiveCycle(param,b,z,1));
+	
 	return MMG;
 end
 
@@ -137,7 +139,7 @@ return x,param,num_iter;
 end
 
 function solveBiCGSTAB_MG(AT::SparseCSCTypes,param::MGparam,b::ArrayTypes,x0::ArrayTypes,verbose::Bool = false)
-	return solveBiCGSTAB_MG(getAfun(AT,zeros(eltype(b),size(b,1),size(b,2)),param.numCores),param,b,x0,verbose);
+	return solveBiCGSTAB_MG(getAfun(AT,zeros(eltype(b),size(b)),param.numCores),param,b,x0,verbose);
 end
 
 function solveBiCGSTAB_MG(Afun::Function,param::MGparam,b::ArrayTypes,x0::ArrayTypes,verbose::Bool = false)
@@ -154,7 +156,7 @@ return x,param,iter;
 end
 
 function solveCG_MG(AT::SparseCSCTypes,param::MGparam,b::ArrayTypes,x0::ArrayTypes,verbose::Bool = false) 
-	return solveCG_MG(getAfun(AT,zeros(eltype(b),size(b,1),size(b,2)),param.numCores),param,b,x0,verbose);
+	return solveCG_MG(getAfun(AT,zeros(eltype(b),size(b)),param.numCores),param,b,x0,verbose);
 end
 
 function solveCG_MG(Afun::Function,param::MGparam,b::ArrayTypes,x0::ArrayTypes,verbose::Bool = false)
