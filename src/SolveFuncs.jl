@@ -144,6 +144,7 @@ end
 
 function solveBiCGSTAB_MG(Afun::Function,param::MGparam,b::ArrayTypes,x0::ArrayTypes,verbose::Bool = false)
 MMG = getMultigridPreconditioner(param,b,false,verbose);
+out= -2;
 if verbose
 	out = 1;
 end
@@ -161,6 +162,7 @@ end
 
 function solveCG_MG(Afun::Function,param::MGparam,b::ArrayTypes,x0::ArrayTypes,verbose::Bool = false)
 MMG = getMultigridPreconditioner(param,b,false,verbose);
+out = -2;
 if verbose
 	out = 1;
 end
