@@ -78,10 +78,10 @@ if length(param.memCycle) > 0
 end
 if nrhs==1
 	memRelax = Array(FGMRESmem,param.levels-1);
-	memKcycle = Array(FGMRESmem,param.levels-2);
+	memKcycle = Array(FGMRESmem,max(param.levels-2,0));
 else
 	memRelax = Array(BlockFGMRESmem,param.levels-1);
-	memKcycle = Array(BlockFGMRESmem,param.levels-2); 
+	memKcycle = Array(BlockFGMRESmem,max(param.levels-2,0)); 
 end	
 
 memCycle = Array(CYCLEmem,param.levels);

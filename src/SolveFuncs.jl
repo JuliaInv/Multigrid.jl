@@ -41,7 +41,7 @@ end
 function getMultigridPreconditioner(param::MGparam,B::ArrayTypes,forTransposed::Bool=false,verbose::Bool=false)
 	TYPE = eltype(B);
 	n = size(B,1)
-	nrhs = size(B,2)
+	nrhs = size(B,2);
 	if hierarchyExists(param)==false
 		println("You have to do a setup first.")
 	end
@@ -149,6 +149,7 @@ if verbose
 	out = 1;
 end
 if size(b,2)==1
+	b = vec(b);
 	x, flag,rnorm,iter = KrylovMethods.bicgstb(Afun,b,tol = param.relativeTol,maxIter = param.maxOuterIter,M1 = MMG,M2 = identity, x = x0,out=out);
 else
 	x, flag,rnorm,iter = KrylovMethods.blockBiCGSTB(Afun,b,tol = param.relativeTol,maxIter = param.maxOuterIter,M1 = MMG,M2 = identity, x = x0,out=out);
@@ -167,6 +168,7 @@ if verbose
 	out = 1;
 end
 if size(b,2)==1
+	b = vec(b);
 	x, flag,rnorm,iter = KrylovMethods.cg(Afun,b,tol = param.relativeTol,maxIter = param.maxOuterIter,M = MMG, x = x0,out=out);
 else
 	x, flag,rnorm,iter = KrylovMethods.blockCG(Afun,b,tol = param.relativeTol,maxIter = param.maxOuterIter,M = MMG, X = x0,out=out);
