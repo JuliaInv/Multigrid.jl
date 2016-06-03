@@ -7,16 +7,16 @@ println("************************************************* Example 2D **********
 domain = [0.0, 1.0, 0.0, 1.0];
 n = [100,100];
 Mr = getRegularMesh(domain,n)
-m  = exp(5*randn(prod(n)));
+m  = exp(2*randn(prod(n)));
 Ar = getDivSigGradMatrix(vec(m),Mr);
-Ar = Ar + 1e-4*norm(Ar,1)*speye(size(Ar,2));
+# Ar = Ar + 1e-4*norm(Ar,1)*speye(size(Ar,2));
 
-levels      = 3;
+levels      = 4;
 numCores 	= 8; 
 maxIter     = 20;
 relativeTol = 1e-10;
 relaxType   = "SPAI";
-relaxParam  = 1.0;
+relaxParam  = 1.1;
 relaxPre 	= 2;
 relaxPost   = 2;
 cycleType   ='V';

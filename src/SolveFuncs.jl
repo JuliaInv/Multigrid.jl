@@ -64,6 +64,45 @@ function getAfun(AT::SparseMatrixCSC,Az::Array,numCores::Int64)
 	return Afun;
 end
 
+
+function solveBiCGSTAB_MG(AT::SparseCSCTypes,param::MGparam,b::ArrayTypes,x0::ArrayTypes,verbose::Bool = false)
+	return solveBiCGSTAB_MG(getAfun(AT,zeros(eltype(b),size(b)),param.numCores),param,b,x0,verbose);
+end
+
+function solveBiCGSTAB_MG(Afun::Function,param::MGparam,b::ArrayTypes,x0::ArrayTypes,verbose::Bool = false)
+MMG = getMultigridPreconditioner(param,b,false,verbose);
+out= -2;
+if verbose
+	out = 1;
+end
+if size(b,2)==1
+	b = vec(b);
+	x, flag,rnorm,iter = KrylovMethods.bicgstb(Afun,b,tol = param.relativeTol,maxIter = param.maxOuterIter,M1 = MMG,M2 = identity, x = x0,out=out);
+else
+	x, flag,rnorm,iter = KrylovMethods.blockBiCGSTB(Afun,b,tol = param.relativeTol,maxIter = param.maxOuterIter,M1 = MMG,M2 = identity, x = x0,out=out);
+end
+return x,param,iter;
+end
+
+function solveCG_MG(AT::SparseCSCTypes,param::MGparam,b::ArrayTypes,x0::ArrayTypes,verbose::Bool = false) 
+	return solveCG_MG(getAfun(AT,zeros(eltype(b),size(b)),param.numCores),param,b,x0,verbose);
+end
+
+function solveCG_MG(Afun::Function,param::MGparam,b::ArrayTypes,x0::ArrayTypes,verbose::Bool = false)
+MMG = getMultigridPreconditioner(param,b,false,verbose);
+out = -2;
+if verbose
+	out = 1;
+end
+if size(b,2)==1
+	b = vec(b);
+	x, flag,rnorm,iter = KrylovMethods.cg(Afun,b,tol = param.relativeTol,maxIter = param.maxOuterIter,M = MMG, x = x0,out=out);
+else
+	x, flag,rnorm,iter = KrylovMethods.blockCG(Afun,b,tol = param.relativeTol,maxIter = param.maxOuterIter,M = MMG, X = x0,out=out);
+end
+return x,param,iter;
+end
+
 ####################################################################################################################
 function solveGMRES_MG(AT::SparseCSCTypes,param::MGparam,b::ArrayTypes,x0::ArrayTypes,verbose::Bool = false,inner=3)
 function ATfun(alpha,z::ArrayTypes,beta,w::ArrayTypes)
@@ -136,42 +175,4 @@ for k=1:outerIter
 	mulAT(-oneType,x,oneType,r); #  r -= HT'*x;
 end
 return x,param,num_iter;
-end
-
-function solveBiCGSTAB_MG(AT::SparseCSCTypes,param::MGparam,b::ArrayTypes,x0::ArrayTypes,verbose::Bool = false)
-	return solveBiCGSTAB_MG(getAfun(AT,zeros(eltype(b),size(b)),param.numCores),param,b,x0,verbose);
-end
-
-function solveBiCGSTAB_MG(Afun::Function,param::MGparam,b::ArrayTypes,x0::ArrayTypes,verbose::Bool = false)
-MMG = getMultigridPreconditioner(param,b,false,verbose);
-out= -2;
-if verbose
-	out = 1;
-end
-if size(b,2)==1
-	b = vec(b);
-	x, flag,rnorm,iter = KrylovMethods.bicgstb(Afun,b,tol = param.relativeTol,maxIter = param.maxOuterIter,M1 = MMG,M2 = identity, x = x0,out=out);
-else
-	x, flag,rnorm,iter = KrylovMethods.blockBiCGSTB(Afun,b,tol = param.relativeTol,maxIter = param.maxOuterIter,M1 = MMG,M2 = identity, x = x0,out=out);
-end
-return x,param,iter;
-end
-
-function solveCG_MG(AT::SparseCSCTypes,param::MGparam,b::ArrayTypes,x0::ArrayTypes,verbose::Bool = false) 
-	return solveCG_MG(getAfun(AT,zeros(eltype(b),size(b)),param.numCores),param,b,x0,verbose);
-end
-
-function solveCG_MG(Afun::Function,param::MGparam,b::ArrayTypes,x0::ArrayTypes,verbose::Bool = false)
-MMG = getMultigridPreconditioner(param,b,false,verbose);
-out = -2;
-if verbose
-	out = 1;
-end
-if size(b,2)==1
-	b = vec(b);
-	x, flag,rnorm,iter = KrylovMethods.cg(Afun,b,tol = param.relativeTol,maxIter = param.maxOuterIter,M = MMG, x = x0,out=out);
-else
-	x, flag,rnorm,iter = KrylovMethods.blockCG(Afun,b,tol = param.relativeTol,maxIter = param.maxOuterIter,M = MMG, X = x0,out=out);
-end
-return x,param,iter;
 end
