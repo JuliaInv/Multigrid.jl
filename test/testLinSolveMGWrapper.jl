@@ -7,7 +7,7 @@ using Multigrid
 println("===  Example 2D DivSigGrad ====");
 
 domain = [0.0, 1.0, 0.0, 1.0];
-n      = [500,500];
+n      = [50,50];
 Mr     = getRegularMesh(domain,n)
 G      = getNodalGradientMatrix(Mr);
 m      = spdiagm(exp(randn(size(G,1))));
@@ -19,7 +19,7 @@ B      = Ar*rand(N,4);
 levels      = 5;
 numCores 	= 8; 
 maxIter     = 15;
-relativeTol = 1e-10;
+relativeTol = 1e-2;
 relaxType   = "SPAI";
 relaxParam  = 1.0;
 relaxPre 	= 2;
