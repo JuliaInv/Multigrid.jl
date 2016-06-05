@@ -37,8 +37,9 @@ end
 return x,param;
 end
 ####################################################################################################################
-
-function getMultigridPreconditioner(param::MGparam,B::ArrayTypes,forTransposed::Bool=false,verbose::Bool=false)
+# this function checks if the memory allocated in param fits the nrhs and generates a function for applying the cycle.
+# Also - it checks if the hierarchy needs to be transposed or not.
+function getMultigridPreconditioner(param::MGparam,B::ArrayTypes,verbose::Bool=false)
 	TYPE = eltype(B);
 	n = size(B,1)
 	nrhs = size(B,2);
@@ -46,13 +47,8 @@ function getMultigridPreconditioner(param::MGparam,B::ArrayTypes,forTransposed::
 		println("You have to do a setup first.")
 	end
 	param = adjustMemoryForNumRHS(param,TYPE,nrhs);
-	if (forTransposed != param.doTranspose)
-		transposeHierarchy(param);
-	end
 	z = param.memCycle[1].x;
 	MMG(b) = (z[:] = 0.0; recursiveCycle(param,b,z,1));
-	# MMG(b) = (z = copy(b);z[:] = 0.0; recursiveCycle(param,b,z,1));
-	
 	return MMG;
 end
 
@@ -70,7 +66,7 @@ function solveBiCGSTAB_MG(AT::SparseCSCTypes,param::MGparam,b::ArrayTypes,x0::Ar
 end
 
 function solveBiCGSTAB_MG(Afun::Function,param::MGparam,b::ArrayTypes,x0::ArrayTypes,verbose::Bool = false)
-MMG = getMultigridPreconditioner(param,b,false,verbose);
+MMG = getMultigridPreconditioner(param,b,verbose);
 out= -2;
 if verbose
 	out = 1;
@@ -89,7 +85,7 @@ function solveCG_MG(AT::SparseCSCTypes,param::MGparam,b::ArrayTypes,x0::ArrayTyp
 end
 
 function solveCG_MG(Afun::Function,param::MGparam,b::ArrayTypes,x0::ArrayTypes,verbose::Bool = false)
-MMG = getMultigridPreconditioner(param,b,false,verbose);
+MMG = getMultigridPreconditioner(param,b,verbose);
 out = -2;
 if verbose
 	out = 1;

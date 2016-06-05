@@ -1,5 +1,6 @@
 module Multigrid
 using jInv.Mesh;
+using jInv.LinearSolvers;
 using KrylovMethods
 
 # check if MUMPS can be used
@@ -104,7 +105,7 @@ type MGparam
 	memKcycle			:: Union{Array{FGMRESmem},Array{BlockFGMRESmem}}
 	coarseSolveType		:: ASCIIString
 	LU
-	doTranspose		:: Int64
+	doTranspose			:: Int64
 	strongConnParam		:: Float64
 	FilteringParam		:: Float64
 	Mesh
@@ -114,6 +115,7 @@ include("MGsetup.jl");
 include("SA-AMG.jl");
 include("MGcycle.jl");
 include("SolveFuncs.jl");
+include("SAAMGWrapper.jl");
 
 """
 function Multigrid.copySolver(MG::MGparam)
