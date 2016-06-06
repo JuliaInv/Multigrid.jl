@@ -11,7 +11,10 @@ type SA_AMGsolver <: AbstractSolver
 	isTranspose 	:: Bool # if true, transpose(A) is provided to solver. If not, A is transposed 
 							# note that A_mul_B! is slower than Ac_mul_B for SparseMatrixCSC
 	doClear			:: Int64 # flag to clear setup
-	tol				:: Float64	
+	tol				:: Float64
+	nIter			::Int
+	timeSetup		::Real
+	timeSolve		::Real
 end
 
 
@@ -19,7 +22,7 @@ function getSA_AMGsolver(MG::MGparam,Krylov::ASCIIString="BiCGSTAB"; sym::Int64=
 	if sym!=1
 		warning("Non-symmetric AMG version is not implemented yet...")
 	end
-	return SA_AMGsolver(MG,Krylov,sym,out,false,0,MG.relativeTol);
+	return SA_AMGsolver(MG,Krylov,sym,out,false,0,MG.relativeTol,0,0.0,0.0);
 end
 
 import jInv.LinearSolvers.solveLinearSystem!;
@@ -51,23 +54,30 @@ function solveLinearSystem!(A,B,X,param::SA_AMGsolver,doTranspose=0)
 		elseif (param.sym != 1) && (doTransposeIterative == 0)
 			A = A';
 		end
+		tic()
 		SA_AMGsetup(A,param.MG,TYPE,param.sym==1,nrhs,verbose);
+		param.timeSetup += toq();
 		param.MG.doTranspose = doTranspose; # the doTranspose of MG MUST be synced with the doTranspose of the interface.
 	end 
 	
 	if (param.sym != 1) && (doTranspose != param.MG.doTranspose)
+		tic()
 		transposeHierarchy(param.MG);
+		param.timeSetup += toq();
 	end	
 	Afun = getAfun(param.MG.As[1],zeros(TYPE,size(B)),param.MG.numCores);
+	tic()
 	if param.Krylov=="BiCGSTAB"
 		X, param.MG,num_iter = solveBiCGSTAB_MG(Afun,param.MG,B,X,verbose);
 	elseif param.Krylov=="PCG"
 		X, param.MG,num_iter = solveCG_MG(Afun,param.MG,B,X,verbose);
 	end
+	param.nIter += num_iter*size(X,2);
+	param.timeSolve+=toq();
+
 	if num_iter >= param.MG.maxOuterIter - 1
 		warn("MG solver reached maximum iterations without convergence");
 	end
-	
 	return X, param
 end 
 
@@ -75,7 +85,7 @@ end
 import jInv.LinearSolvers.copySolver;
 function copySolver(s::SA_AMGsolver)
 	# copies absolutely what's necessary.
-	return SA_AMGsolver(Multigrid.copySolver(s.MG),s.Krylov,s.sym,s.out,s.isTranspose,s.doClear,s.tol);
+	return SA_AMGsolver(Multigrid.copySolver(s.MG),s.Krylov,s.sym,s.out,s.isTranspose,s.doClear,s.tol,0,0.0,0.0);
 end
 
 
