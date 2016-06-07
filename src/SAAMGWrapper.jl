@@ -64,7 +64,8 @@ function solveLinearSystem!(A,B,X,param::SA_AMGsolver,doTranspose=0)
 		tic()
 		transposeHierarchy(param.MG);
 		param.timeSetup += toq();
-	end	
+	end
+	blas_set_num_threads(param.MG.numCores);
 	Afun = getAfun(param.MG.As[1],zeros(TYPE,size(B)),param.MG.numCores);
 	tic()
 	if param.Krylov=="BiCGSTAB"
