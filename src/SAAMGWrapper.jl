@@ -27,6 +27,9 @@ end
 
 import jInv.LinearSolvers.solveLinearSystem!;
 function solveLinearSystem!(A,B,X,param::SA_AMGsolver,doTranspose=0)
+	if issparse(B)
+		B = full(B);
+	end
 	if size(B,2) == 1
 		B = vec(B);
 	end
