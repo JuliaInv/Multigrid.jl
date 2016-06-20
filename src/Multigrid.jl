@@ -130,13 +130,13 @@ end
 
 
 function getMGparam(levels::Int64,numCores::Int64,maxIter::Int64,relativeTol:: Float64,relaxType::ASCIIString,relaxParam::Float64,
-					relaxPre::Function,relaxPost::Function,cycleType::Char='V',coarseSolveType::ASCIIString="NoMUMPS",strongConnParam::Float64=0.5,FilteringParam::Float64 = 0.0,Mesh = [])
+					relaxPre::Function,relaxPost::Function,cycleType::Char='V',coarseSolveType::ASCIIString="NoMUMPS",strongConnParam::Float64=0.4,FilteringParam::Float64 = 0.0,Mesh = [])
 return MGparam(levels,numCores,maxIter,relativeTol,relaxType,relaxParam,relaxPre,relaxPost,cycleType,[],[],[],[],Array(CYCLEmem,0),
 				Array(FGMRESmem,0),Array(FGMRESmem,0),coarseSolveType,[],0,strongConnParam,FilteringParam,Mesh);
 end
 					
 function getMGparam(levels::Int64=3,numCores::Int64=8,maxIter::Int64=20,relativeTol::Float64=1e-6,relaxType::ASCIIString="SPAI",relaxParam::Float64=1.0,
-					relaxPre::Int64=2,relaxPost::Int64=2,cycleType::Char='V',coarseSolveType::ASCIIString="NoMUMPS",strongConnParam::Float64=0.5,FilteringParam::Float64 = 0.0,Mesh = [])
+					relaxPre::Int64=2,relaxPost::Int64=2,cycleType::Char='V',coarseSolveType::ASCIIString="NoMUMPS",strongConnParam::Float64=0.4,FilteringParam::Float64 = 0.0,Mesh = [])
 relaxPreFun(x) = relaxPre;
 relaxPostFun(x) = relaxPost;
 return getMGparam(levels,numCores,maxIter,relativeTol,relaxType,relaxParam,relaxPreFun,relaxPostFun,cycleType,coarseSolveType,strongConnParam,FilteringParam,Mesh);
