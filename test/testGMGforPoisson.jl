@@ -33,6 +33,10 @@ MGsetup(Ar,MG,Float64,size(b,2),true);
 println("****************************** Stand-alone GMG: ******************************")
 solveMG(MG,b,x,true);
 
+println("****************************** Stand-alone GMG: iterative coarsest ***********************")
+MG.coarseSolveType = "BiCGSTAB"
+MGsetup(Ar,MG,Float64,size(b,2),true);
+solveMG(MG,b,x,true);
 println("****************************** GMRES preconditioned with GMG: (only one rhs...) ******************************")
 x[:] = 0.0
 b = vec(b[:,1]);

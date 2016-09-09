@@ -7,7 +7,7 @@ As = Array(SparseMatrixCSC,param.levels);
 n = param.Mesh.n + 1; # n here is the number of NODES!!!
 N = prod(n);
 As[1] = AT;
-relaxPrecs = Array(SparseMatrixCSC,param.levels-1);
+relaxPrecs = Array(SparseMatrixCSC,param.levels);
 Cop = nnz(AT);
 for l = 1:(param.levels-1)
 	if verbose
@@ -16,7 +16,7 @@ for l = 1:(param.levels-1)
     AT = As[l];
     if param.relaxType=="Jac" || param.relaxType=="Jac-GMRES"
 		d = param.relaxParam./diag(AT);
-		relaxPrecs[l] = spdiagm(d);#d;# here we need to take the conjugate for the SpMatVec, but we give At instead of A so it cancels
+		relaxPrecs[l] = spdiagm(d);# here we need to take the conjugate for the SpMatVec, but we give At instead of A so it cancels
 	elseif param.relaxType=="SPAI"
 		relaxPrecs[l] = spdiagm(param.relaxParam*getSPAIprec(AT)); # here we need to take the conjugate for the SpMatVec, but we give At instead of A so it cancels
 	else
@@ -30,7 +30,7 @@ for l = 1:(param.levels-1)
 		As = As[1:l];
 		Ps = Ps[1:l-1];
 		Rs = Rs[1:l-1];
-		relaxPrecs = relaxPrecs[1:l-1];
+		relaxPrecs = relaxPrecs[1:l];
 		break;
 	else
 		Rs[l] = P; # this is becasue we hold the transpose of the matrices and P = R' anyway here....
@@ -51,12 +51,15 @@ if verbose
 end
 if param.coarseSolveType == "MUMPS"
 	param.LU = factorMUMPS(As[end]',0,0);
+elseif param.coarseSolveType == "BiCGSTAB"
+	d = param.relaxParam./diag(As[end]);
+	relaxPrecs[param.levels] = spdiagm(d);
 else
 	param.LU = lufact(As[end]');
 end
 param.doTranspose = 0;
 if verbose 
-	println("MG setup coarsest: ",n,", done LU in ",toq());
+	println("MG setup coarsest ",param.coarseSolveType,": ",n,", done LU in ",toq());
 end
 param.As = As;
 param.Ps = Ps;
@@ -162,6 +165,8 @@ if param.coarseSolveType == "MUMPS"
 	else
 		error("Is there another option for doTranspose????");
 	end
+elseif param.coarseSolveType == "BiCGSTAB"
+	param.relaxPrecs[end] = conj(param.relaxPrecs[end]);
 else
 	destroyCoarsestLU(param);
 	param.LU = lufact(param.As[end]');

@@ -66,6 +66,8 @@ end
 As[end] = As[end] + 1e-8*norm(As[end],1)*speye(size(As[end],2));
 if param.coarseSolveType == "MUMPS"
 	param.LU = factorMUMPS(As[end]',0,0);
+elseif param.coarseSolveType == "BiCGSTAB"
+	error("SA-AMG: Coarsest BiCGSTAB not implemented here");
 else
 	param.LU = lufact(As[end]');
 end

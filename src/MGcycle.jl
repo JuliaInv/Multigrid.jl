@@ -128,6 +128,23 @@ end
 function solveCoarsest(param::MGparam,b::ArrayTypes,x::ArrayTypes,doTranspose::Int64=0)
 if param.coarseSolveType == "MUMPS"
 	applyMUMPS(param.LU,b,x,doTranspose);
+elseif param.coarseSolveType == "BiCGSTAB"
+	
+	AT = param.As[end];
+	maxIter = 10;
+	tol = 0.1;
+	out= -2;
+	Afun = getAfun(AT,zeros(eltype(b),size(b)),param.numCores);
+	D = param.relaxPrecs[end];
+	y = zeros(eltype(b),size(b));
+	M1(xx::ArrayTypes) = (SpMatMul(D,xx,y,param.numCores);return y;);
+	if size(b,2)==1
+		b = vec(b);
+		x, flag,rnorm,iter = KrylovMethods.bicgstb(Afun,b,tol = tol,maxIter = maxIter,M1 = M1,M2 = identity,out=out);
+	else
+		x, flag,rnorm,iter = KrylovMethods.blockBiCGSTB(Afun,b,tol = tol,maxIter = maxIter,M1 = M1,M2 = identity,out=out);
+	end
+	# println("Applied ",iter," BiCGSTAB");
 else
 	if doTranspose==1
 		error(" MULTIGRID: solveCoarsest(): If doTranspose ==1 then it's better to use MUMPS ");
