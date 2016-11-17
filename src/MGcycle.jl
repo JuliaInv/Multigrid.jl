@@ -39,12 +39,13 @@ npresmth  = param.relaxPre(level);
 npostsmth = param.relaxPost(level);
 
 if param.relaxType=="Jac-GMRES"
-	
 	if nrhs == 1
 		x = FGMRES_relaxation(AT,r,x,npresmth,MM,gmresTol,false,true,numCores,param.memRelax[level])[1];
 	else
 		x = BlockFGMRES_relaxation(AT,r,x,npresmth,MM,gmresTol,false,false,numCores, param.memRelax[level])[1];
 	end
+# elseif param.relaxType == "VankaFaces"
+	# x = RelaxVankaFaces(AT,r,x,b,D,npresmth,numCores,param.Mesh)
 else
 	x = relax(AT,r,x,b,D,npresmth,numCores);
 end
@@ -69,9 +70,7 @@ else
 			xc = BlockFGMRES_primitive(Ac,bc,xc,2,MMG,gmresTol,false,true,numCores,param.memKcycle[level+1])[1];
 		end
     else
-		
 		# println("before Coarse solve:",vecnorm(Ac'*xc-bc));
-		
 		xc = recursiveCycle(param,bc,xc,level+1);# xc changes, bc does not change
         # println("After Coarse solve 1:",vecnorm(Ac'*xc-bc));
 		if param.cycleType=='W'
@@ -98,6 +97,8 @@ if param.relaxType=="Jac-GMRES"
 	else
 		x = BlockFGMRES_relaxation(AT,r,x,npostsmth,MM,gmresTol,false,false,numCores, param.memRelax[level])[1];
 	end
+# elseif param.relaxType == "VankaFaces"
+	# x = RelaxVankaFaces(AT,r,x,b,D,npostsmth,numCores,param.Mesh)
 else
 	x = relax(AT,r,x,b,D,npostsmth,numCores);
 end
@@ -114,13 +115,13 @@ const oneType = one(eltype(r));
 const zeroType = zero(eltype(r));
 # nr0 = vecnorm(r);
 # println(nr0)
-for i=1:numit	
+for i=1:numit-1	
 	SpMatMul(oneType,D,r,oneType,x,numCores); # x = x + D'*r
 	SpMatMul(-oneType,AT,x,zeroType,r,numCores) # r = -A'*x
 	addVectors(oneType,b,r); # r = r + b;
 	# println("Reduced: ", vecnorm(r)/nr0)
 end
-
+SpMatMul(oneType,D,r,oneType,x,numCores); # x = x + D'*r
 return x
 end
 

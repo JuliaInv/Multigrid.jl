@@ -1,13 +1,16 @@
 export MGsetup,transposeHierarchy,adjustMemoryForNumRHS
 
-function MGsetup(AT::SparseMatrixCSC,param::MGparam,rhsType::DataType = Float64,nrhs::Int64 = 1,verbose::Bool=false)
-Ps = Array(SparseMatrixCSC,param.levels-1);
-Rs = Array(SparseMatrixCSC,param.levels-1);
-As = Array(SparseMatrixCSC,param.levels);
-n = param.Mesh.n + 1; # n here is the number of NODES!!!
+function MGsetup(AT::SparseMatrixCSC,Mesh::RegularMesh,param::MGparam,rhsType::DataType = Float64,nrhs::Int64 = 1,verbose::Bool=false)
+Ps      	= Array(SparseMatrixCSC,param.levels-1);
+Rs      	= Array(SparseMatrixCSC,param.levels-1);
+As 			= Array(SparseMatrixCSC,param.levels);
+Meshes  	= Array(RegularMesh,param.levels); 
+relaxPrecs 	= Array(SparseMatrixCSC,param.levels);
+n = Mesh.n + 1; # n here is the number of NODES!!!
 N = prod(n);
 As[1] = AT;
-relaxPrecs = Array(SparseMatrixCSC,param.levels);
+Meshes[1] = Mesh;
+
 Cop = nnz(AT);
 for l = 1:(param.levels-1)
 	if verbose

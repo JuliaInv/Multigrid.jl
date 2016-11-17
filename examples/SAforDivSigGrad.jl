@@ -47,11 +47,10 @@ Ar = 0;
 b = 0;
 x = 0;
 Mr = 0;
-error("ET");
 println("************************************************* Example 3D ******************************************************");
 
 domain = [0.0, 1.0, 0.0, 1.0, 0.0, 1.0];
-n = [200,200,200];
+n = [100,100,100];
 Mr = getRegularMesh(domain,n)
 m  = exp(randn(prod(n)));
 Ar = getDivSigGradMatrix(vec(m),Mr);

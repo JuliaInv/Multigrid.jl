@@ -21,21 +21,21 @@ relaxPost   = 2;
 cycleType   ='W';
 coarseSolveType = "NoMUMPS";
 
-MG = getMGparam(levels,numCores,maxIter,relativeTol,relaxType,relaxParam,relaxPre,relaxPost,cycleType,coarseSolveType,0.5,0.0,Mr);
+MG = getMGparam(levels,numCores,maxIter,relativeTol,relaxType,relaxParam,relaxPre,relaxPost,cycleType,coarseSolveType,0.5,0.0);
 
 N = size(Ar,2);
 
 b = Ar*rand(N,3);
 x = zeros(N,3);
 
-MGsetup(Ar,MG,Float64,size(b,2),true);
+MGsetup(Ar,Mr,MG,Float64,size(b,2),true);
 
 println("****************************** Stand-alone GMG: ******************************")
 solveMG(MG,b,x,true);
 
 println("****************************** Stand-alone GMG: iterative coarsest ***********************")
 MG.coarseSolveType = "BiCGSTAB"
-MGsetup(Ar,MG,Float64,size(b,2),true);
+MGsetup(Ar,Mr,MG,Float64,size(b,2),true);
 solveMG(MG,b,x,true);
 println("****************************** GMRES preconditioned with GMG: (only one rhs...) ******************************")
 x[:] = 0.0
