@@ -1,14 +1,14 @@
 export SA_AMGsolver,getSA_AMGsolver,copySolver
 export solveLinearSystem!,clear!,copySolver
 
-## this is a wrapper for using the SA AMG preconditioner using the abstractSolver interface. 
+## this is a wrapper for using the SA AMG preconditioner using the abstractSolver interface.
 
 type SA_AMGsolver <: AbstractSolver
 	MG				:: MGparam
-	Krylov			:: ASCIIString
+	Krylov			:: String
 	sym				:: Int64  #0=unsymmetric, 1=symm. pos def, 2=general symmetric
 	out				:: Int64
-	isTranspose 	:: Bool # if true, transpose(A) is provided to solver. If not, A is transposed 
+	isTranspose 	:: Bool # if true, transpose(A) is provided to solver. If not, A is transposed
 							# note that A_mul_B! is slower than Ac_mul_B for SparseMatrixCSC
 	doClear			:: Int64 # flag to clear setup
 	tol				:: Float64
@@ -18,7 +18,7 @@ type SA_AMGsolver <: AbstractSolver
 end
 
 
-function getSA_AMGsolver(MG::MGparam,Krylov::ASCIIString="BiCGSTAB"; sym::Int64=1, out::Int64 =-1)
+function getSA_AMGsolver(MG::MGparam,Krylov::String="BiCGSTAB"; sym::Int64=1, out::Int64 =-1)
 	if sym!=1
 		warning("Non-symmetric AMG version is not implemented yet...")
 	end
@@ -52,7 +52,7 @@ function solveLinearSystem!(A,B,X,param::SA_AMGsolver,doTranspose=0)
 	end
 	if hierarchyExists(param.MG)==false
 		doTransposeIterative = (param.isTranspose) ? mod(doTranspose+1,2) : doTranspose
-		if (param.sym==1) ||  ((param.sym != 1) && (doTransposeIterative == 1)) 
+		if (param.sym==1) ||  ((param.sym != 1) && (doTransposeIterative == 1))
 			# this means that we're OK with using Ac_mul_B! in iterative methods, hence, MG is also OK.
 		elseif (param.sym != 1) && (doTransposeIterative == 0)
 			A = A';
@@ -61,14 +61,14 @@ function solveLinearSystem!(A,B,X,param::SA_AMGsolver,doTranspose=0)
 		SA_AMGsetup(A,param.MG,TYPE,param.sym==1,nrhs,verbose);
 		param.timeSetup += toq();
 		param.MG.doTranspose = doTranspose; # the doTranspose of MG MUST be synced with the doTranspose of the interface.
-	end 
-	
+	end
+
 	if (param.sym != 1) && (doTranspose != param.MG.doTranspose)
 		tic()
 		transposeHierarchy(param.MG);
 		param.timeSetup += toq();
 	end
-	blas_set_num_threads(param.MG.numCores);
+	BLAS.set_num_threads(param.MG.numCores);
 	Afun = getAfun(param.MG.As[1],zeros(TYPE,size(B)),param.MG.numCores);
 	tic()
 	if param.Krylov=="BiCGSTAB"
@@ -83,7 +83,7 @@ function solveLinearSystem!(A,B,X,param::SA_AMGsolver,doTranspose=0)
 		warn("MG solver reached maximum iterations without convergence");
 	end
 	return X, param
-end 
+end
 
 
 import jInv.LinearSolvers.copySolver;

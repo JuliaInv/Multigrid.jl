@@ -14,7 +14,6 @@ build_script:
   - IF EXIST .git\shallow (git fetch --unshallow)
   - C:\projects\julia\bin\julia -e "versioninfo(); Pkg.init(); Pkg.clone(\"https://github.com/JuliaInv/jInv.jl\", \"jInv\");"
   - C:\projects\julia\bin\julia -e "versioninfo(); Pkg.init(); Pkg.clone(\"https://github.com/JuliaInv/DivSigGrad.jl\", \"DivSigGrad\");"
-  - C:\projects\julia\bin\julia -e "versioninfo(); Pkg.init(); Pkg.clone(\"https://github.com/lruthotto/KrylovMethods.jl\", \"KrylovMethods\");"
   - C:\projects\julia\bin\julia -e "versioninfo(); Pkg.init(); Pkg.clone(pwd(), \"Multigrid\");"
 
 test_script:

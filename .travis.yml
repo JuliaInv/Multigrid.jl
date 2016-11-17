@@ -5,14 +5,12 @@ os:
   - linux
 
 julia:
-  - 0.4
-  - release
-  
+  - 0.5
+
 notifications:
   email: false
- 
+
 before_install:
-   - julia -e 'Pkg.clone("https://github.com/lruthotto/KrylovMethods.jl","KrylovMethods"); Pkg.build("KrylovMethods");'
    - julia -e 'Pkg.clone("https://github.com/JuliaInv/jInv.jl","jInv"); Pkg.build("jInv");'
    - julia -e 'Pkg.clone("https://github.com/JuliaInv/DivSigGrad.jl","DivSigGrad"); Pkg.build("DivSigGrad");'
    - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
