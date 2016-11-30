@@ -12,7 +12,6 @@ try
 	hasMUMPS = vMUMPS >= minMUMPSversion
 	if hasMUMPS
 		using MUMPS;
-		println("USING MUMPS!!!")
 	end
 catch 
 end
