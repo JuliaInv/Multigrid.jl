@@ -1,5 +1,6 @@
 [![Build Status](https://travis-ci.org/JuliaInv/Multigrid.jl.svg?branch=master)](https://travis-ci.org/JuliaInv/Multigrid.jl)
 [![Coverage Status](https://coveralls.io/repos/github/JuliaInv/Multigrid.jl/badge.svg?branch=master)](https://coveralls.io/github/JuliaInv/Multigrid.jl?branch=master)
+[![Build status](https://ci.appveyor.com/api/projects/status/itta987m129uroku?svg=true)](https://ci.appveyor.com/project/lruthotto/multigrid-jl)
 
 # Multigrid.jl
 
@@ -20,7 +21,7 @@ Coarsest Grid can be solved using [`MUMPS`] (https://github.com/JuliaSparse/MUMP
 
 # Requirements
 
-This package is intended to use with julia versions 0.4.x.
+This package is intended to use with julia versions 0.5.x.
 
 This package is an add-on for [`jInv`](https://github.com/JuliaInv/jInv.jl), which needs to be installed (for regular mesh module).
 For the testing -   [`DivSigGrad`] (https://github.com/JuliaInv/DivSigGrad.jl) needs to be installed too.

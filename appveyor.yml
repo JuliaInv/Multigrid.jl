@@ -23,8 +23,9 @@ install:
         $("http://s3.amazonaws.com/"+$env:JULIAVERSION),
         "C:\projects\julia-binary.exe")
 # Run installer silently, output to C:\projects\julia
-  - C:\projects\julia-binary.exe /S /D=C:\projects\julia  - C:\projects\julia\bin\julia -e "versioninfo(); Pkg.init(); Pkg.clone(\"https://github.com/JuliaInv/jInv.jl\", \"jInv\");"
-  - C:\projects\julia\bin\julia -e "versioninfo(); Pkg.init(); Pkg.clone(\"https://github.com/JuliaInv/DivSigGrad.jl\", \"DivSigGrad\");"
+  - C:\projects\julia-binary.exe /S /D=C:\projects\julia  
+  - C:\projects\julia\bin\julia -e "versioninfo(); Pkg.init(); Pkg.clone(\"https://github.com/JuliaInv/jInv.jl\", \"jInv\");"
+  - C:\projects\julia-binary.exe -e "Pkg.clone(\"https://github.com/JuliaInv/DivSigGrad.jl\", \"DivSigGrad\");"
 
 build_script:
 # Need to convert from shallow to complete for Pkg.clone to work
