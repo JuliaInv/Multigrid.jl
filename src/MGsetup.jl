@@ -74,11 +74,11 @@ if length(param.memCycle) > 0
 	if size(param.memCycle[1].x,2) != nrhs 
 		good = false
 	elseif param.relaxType == "Jac-GMRES"
-		if isempty(param.memRelax[1])
+		if length(param.memRelax)==0
 			good = false;
 		end
 	elseif param.cycleType == 'K'
-		if isempty(param.memRelax[1])
+		if length(param.memRelax)==0
 			good = false;
 		end
 	end
@@ -88,15 +88,19 @@ end
 if good
 	return param;
 end
-if nrhs==1
-	memRelax = Array(FGMRESmem,param.levels-1);
-	memKcycle = Array(FGMRESmem,max(param.levels-2,0));
-else
-	memRelax = Array(FGMRESmem,param.levels-1);
+
+if param.cycleType == 'K'
 	memKcycle = Array(FGMRESmem,max(param.levels-2,0)); 
-	# memRelax = Array(BlockFGMRESmem,param.levels-1);
-	# memKcycle = Array(BlockFGMRESmem,max(param.levels-2,0)); 
-end	
+else
+	memKcycle = Array(FGMRESmem,0);
+end
+
+if param.relaxType == "Jac-GMRES"
+	memRelax = Array(FGMRESmem,param.levels-1); 
+else
+	memRelax = Array(FGMRESmem,0);
+end
+
 
 memCycle = Array(CYCLEmem,param.levels);
 
