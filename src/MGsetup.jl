@@ -1,4 +1,4 @@
-export MGsetup,transposeHierarchy,adjustMemoryForNumRHS
+export MGsetup,transposeHierarchy,adjustMemoryForNumRHS,getSPAIprec,getFWInterp
 
 function MGsetup(AT::SparseMatrixCSC,Mesh::RegularMesh,param::MGparam,rhsType::DataType = Float64,nrhs::Int64 = 1,verbose::Bool=false)
 Ps      	= Array(SparseMatrixCSC,param.levels-1);
@@ -52,15 +52,8 @@ if verbose
 	tic()
 	println("MG Setup: Operator complexity = ",Cop/nnz(As[1]));
 end
-if param.coarseSolveType == "MUMPS"
-	param.LU = factorMUMPS(As[end]',0,0);
-elseif param.coarseSolveType == "BiCGSTAB"
-	d = param.relaxParam./diag(As[end]);
-	relaxPrecs[param.levels] = spdiagm(d);
-else
-	param.LU = lufact(As[end]');
-end
-param.doTranspose = 0;
+defineCoarsestAinv(param,As[end]);
+
 if verbose 
 	println("MG setup coarsest ",param.coarseSolveType,": ",n,", done LU in ",toq());
 end
@@ -77,17 +70,19 @@ if length(param.As)==0
 	error("The Hierarchy is empty - run a setup first.")
 end
 
-if length(param.memCycle) > 0	
-	if size(param.memCycle[1].x,2) == nrhs
-		return param;
-	end
-end
+# if length(param.memCycle) > 0	
+	# if size(param.memCycle[1].x,2) == nrhs
+		# return param;
+	# end
+# end
 if nrhs==1
 	memRelax = Array(FGMRESmem,param.levels-1);
 	memKcycle = Array(FGMRESmem,max(param.levels-2,0));
 else
-	memRelax = Array(BlockFGMRESmem,param.levels-1);
-	memKcycle = Array(BlockFGMRESmem,max(param.levels-2,0)); 
+	memRelax = Array(FGMRESmem,param.levels-1);
+	memKcycle = Array(FGMRESmem,max(param.levels-2,0)); 
+	# memRelax = Array(BlockFGMRESmem,param.levels-1);
+	# memKcycle = Array(BlockFGMRESmem,max(param.levels-2,0)); 
 end	
 
 memCycle = Array(CYCLEmem,param.levels);
@@ -102,26 +97,27 @@ N = size(param.As[1],2);
 
 for l = 1:(param.levels-1)
 	N = size(param.As[l],2);
-	if l==1
-		memCycle[l] = getCYCLEmem(N,nrhs,rhsType,false); # we don't need a memory allocate for b.
-	else
-		memCycle[l] = getCYCLEmem(N,nrhs,rhsType,true);
-	end
+	needZ = param.relaxType=="Jac-GMRES";
+	memCycle[l] = getCYCLEmem(N,nrhs,rhsType,true);
 	if param.relaxType=="Jac-GMRES"
 		maxRelax = max(param.relaxPre(l),param.relaxPost(l));
 		if nrhs == 1
-			memRelax[l] = getFGMRESmem(N,true,rhsType,maxRelax);
+			memRelax[l] = getFGMRESmem(N,true,rhsType,maxRelax,1,true);
 		else
-			memRelax[l] = getBlockFGMRESmem(N,nrhs,false,rhsType,maxRelax);
+			# memRelax[l] = getBlockFGMRESmem(N,nrhs,false,rhsType,maxRelax);
+			# memRelax[l] = getFGMRESmem(N,false,rhsType,maxRelax,nrhs);
+			memRelax[l] = getFGMRESmem(N,true,rhsType,maxRelax,1,true);
 		end
 	end
 	
 	if l > 1 && param.cycleType=='K'
 		if nrhs == 1
-			memKcycle[l-1] = getFGMRESmem(N,true,rhsType,2);
+			memKcycle[l-1] = getFGMRESmem(N,true,rhsType,2,1,true);
 		else
-			memKcycle[l-1] = getBlockFGMRESmem(N,nrhs,true,rhsType,2);
+			# memKcycle[l-1] = getBlockFGMRESmem(N,nrhs,true,rhsType,2);
+			memKcycle[l-1] = getFGMRESmem(N,true,rhsType,2,nrhs,true);
 		end
+		
 	end
 end
 memCycle[end] = getCYCLEmem(size(param.As[end],2),nrhs,rhsType,false); # no need for residual on the coarsest level...
@@ -182,14 +178,14 @@ return;
 end
 
 # Bilinear "Full Weighting" prolongation
-function getFWInterp(n::Array{Int64,1})
+function getFWInterp(n_nodes::Array{Int64,1},geometric::Bool=false)
 # n here is the number of NODES!!!
-(P1,nc1) = get1DFWInterp(n[1]);
-(P2,nc2) = get1DFWInterp(n[2]);
-if length(n)==3
-	(P3,nc3) = get1DFWInterp(n[3]);
+(P1,nc1) = get1DFWInterp(n_nodes[1],geometric);
+(P2,nc2) = get1DFWInterp(n_nodes[2],geometric);
+if length(n_nodes)==3
+	(P3,nc3) = get1DFWInterp(n_nodes[3],geometric);
 end
-if length(n)==2
+if length(n_nodes)==2
 	P = kron(P2,P1);
 	nc = [nc1,nc2];
 else
@@ -199,22 +195,27 @@ end
 return P,nc
 end
 
-function get1DFWInterp(n::Int64)
+function get1DFWInterp(n_nodes::Int64,geometric)
 # n here is the number of NODES!!!
-oddDim = mod(n,2);
-if n > 32
-	minusHalf = 0.5*ones(n-1);
-	P = spdiagm((minusHalf,ones(n),minusHalf),[-1,0,1],n,n);
+oddDim = mod(n_nodes,2);
+if n_nodes > 16
+	halfVec = 0.5*ones(n_nodes-1);
+	P = spdiagm((halfVec,ones(n_nodes),halfVec),[-1,0,1],n_nodes,n_nodes);
     if oddDim == 1
         P = P[:,1:2:end];
     else
-        P = P[:,[1:2:end;end]];
-        P[end-1:end,end-1:end] = speye(2);
-#         P = P[:,1:2:end];
-#         P[end,end-1:end] = [-0.5,1.5];
+		if geometric
+			P = speye(n_nodes);
+			warn("getFWInterp: in geometric mode we stop coarsening because num cells does not divide by two");
+		else 
+			P = P[:,[1:2:end;end]];
+			P[end-1:end,end-1:end] = speye(2);
+#         	P = P[:,1:2:end];
+#         	P[end,end-1:end] = [-0.5,1.5];
+		end
     end
 else
-    P = speye(n);
+    P = speye(n_nodes);
 end
 nc = size(P,2);
 return P,nc

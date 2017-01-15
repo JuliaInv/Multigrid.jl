@@ -14,9 +14,9 @@ Ar = getDivSigGradMatrix(vec(m),Mr);
 levels      = 4;
 numCores 	= 8; 
 maxIter     = 20;
-relativeTol = 1e-10;
+relativeTol = 1e-6;
 relaxType   = "SPAI";
-relaxParam  = 1.1;
+relaxParam  = 1.0;
 relaxPre 	= 2;
 relaxPost   = 2;
 cycleType   ='V';
@@ -26,23 +26,38 @@ MG = getMGparam(levels,numCores,maxIter,relativeTol,relaxType,relaxParam,relaxPr
 
 N = size(Ar,2);
 
-b = Ar*rand(N,3);
-x = zeros(N,3);
-SA_AMGsetup(Ar,MG,Float64,true,size(b,2),true);
+b = Ar*rand(N,20);
+x = zeros(N,20);
+SA_AMGsetup(Ar,MG,Float64,true,1,true);
 
-println("****************************** Stand-alone AMG: ******************************")
-solveMG(MG,b,x,true);
 
-x[:] = 0.0;
-println("****************************** CG preconditioned with AMG: ******************************")
-solveCG_MG(Ar,MG,b,x,true)
+# println("****************************** Stand-alone AMG single rhs: ******************************")
+# solveMG(MG,vec(b[:,1]),vec(x[:,1]),true);
 
-println("****************************** GMRES preconditioned with AMG: (only one rhs...) ******************************")
-x[:] = 0.0;
-b = vec(b[:,1]);
-x = zeros(N);
+# x[:] = 0.0;
+# println("****************************** Stand-alone AMG multiple rhs: ******************************")
+# solveMG(MG,b,x,true);
+
+
+# x[:] = 0.0;
+# println("****************************** CG preconditioned with AMG single rhs: ******************************")
+# solveCG_MG(Ar,MG,vec(b[:,1]),vec(x[:,1]),true)
+
+# println("****************************** CG preconditioned with AMG multiple rhs: ******************************")
+# solveCG_MG(Ar,MG,b,x,true)
+
+
+
+println("****************************** GMRES preconditioned with AMG: single rhs: ******************************")
+solveGMRES_MG(Ar,MG,vec(b[:,1]),vec(x[:,1]),true,10)
+
+println("****************************** GMRES preconditioned with AMG: multiple rhs: ******************************")
 solveGMRES_MG(Ar,MG,b,x,true,10)
 
+
+
+println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~`")
+error("Eran")
 Ar = 0;
 b = 0;
 x = 0;

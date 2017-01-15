@@ -14,8 +14,8 @@ levels      = 4;
 numCores 	= 8; 
 maxIter     = 3;
 relativeTol = 1e-10;
-relaxType   = "Jac-GMRES";
-relaxParam  = 1.0;
+relaxType   = "Jac";
+relaxParam  = 0.8;
 relaxPre 	= 2;
 relaxPost   = 2;
 cycleType   ='W';
@@ -25,8 +25,8 @@ MG = getMGparam(levels,numCores,maxIter,relativeTol,relaxType,relaxParam,relaxPr
 
 N = size(Ar,2);
 
-b = Ar*rand(N,3);
-x = zeros(N,3);
+b = Ar*rand(N,2);
+x = zeros(N,2);
 
 MGsetup(Ar,Mr,MG,Float64,size(b,2),true);
 
@@ -35,12 +35,15 @@ solveMG(MG,b,x,true);
 
 println("****************************** Stand-alone GMG: iterative coarsest ***********************")
 MG.coarseSolveType = "BiCGSTAB"
+
 MGsetup(Ar,Mr,MG,Float64,size(b,2),true);
 solveMG(MG,b,x,true);
 println("****************************** GMRES preconditioned with GMG: (only one rhs...) ******************************")
 x[:] = 0.0
 b = vec(b[:,1]);
 x = vec(x[:,1]);
+MG.relaxType   = "Jac-GMRES";
+MGsetup(Ar,Mr,MG,Float64,size(b,2),true);
 solveGMRES_MG(Ar,MG,b,x,true,2)
 
 Ar = 0;

@@ -30,7 +30,14 @@ if vecnorm(x)>0.0
    	SpMatMul(-oneType,AT,x,oneType,r,numCores)#  r -= A'*x;
 end
 D = param.relaxPrecs[level];
-MM(xx::ArrayTypes,y::ArrayTypes) = (SpMatMul(D,xx,y,numCores);return y;);
+MM = identity;
+Afun = identity;
+if param.relaxType=="Jac-GMRES"
+	y = param.memRelax[level].v_prec;
+	MM(xx::ArrayTypes) = (SpMatMul(D,xx,y,numCores);return y;);
+	# Afun = getAfun(AT,param.memRelax[level].Az,numCores);
+	# norm(Afun(y))
+end
 
 PT = Ps[level];
 RT = Rs[level];
@@ -39,10 +46,15 @@ npresmth  = param.relaxPre(level);
 npostsmth = param.relaxPost(level);
 
 if param.relaxType=="Jac-GMRES"
+    Afun = getAfun(AT,param.memRelax[level].Az,numCores)
 	if nrhs == 1
-		x = FGMRES_relaxation(AT,r,x,npresmth,MM,gmresTol,false,true,numCores,param.memRelax[level])[1];
+		x = FGMRES_relaxation(Afun,r,x,npresmth,MM,gmresTol,false,true,numCores,param.memRelax[level])[1];
 	else
-		x = BlockFGMRES_relaxation(AT,r,x,npresmth,MM,gmresTol,false,false,numCores, param.memRelax[level])[1];
+		for ii = 1:nrhs
+			x[:,ii] = FGMRES_relaxation(Afun,r[:,ii],x[:,ii],npresmth,MM,gmresTol,false,true,numCores,param.memRelax[level])[1];
+		end
+		# x = BlockFGMRES(Afun,r,x,npresmth,MM,gmresTol,false,false,numCores, param.memRelax[level])[1];
+		# x = BlockFGMRES_relaxation(AT,r,x,npresmth,MM,gmresTol,false,false,numCores, param.memRelax[level])[1];
 	end
 # elseif param.relaxType == "VankaFaces"
 	# x = RelaxVankaFaces(AT,r,x,b,D,npresmth,numCores,param.Mesh)
@@ -63,11 +75,15 @@ if level==nlevels-1
 else
 	Ac = As[level+1];
     if param.cycleType == 'K'
-		MMG(x,y) = (y[:] = 0.0; recursiveCycle(param,x,y,level+1)); # x does not change...
+		# yz = zeros(eltype(bc),size(bc));
+		yzK = param.memKcycle[level].v_prec;
+		AfunK = getAfun(Ac,param.memKcycle[level].Az,numCores);
+		MMG(x) = (yzK[:] = 0.0; recursiveCycle(param,x,yzK,level+1)); # x does not change...
 		if nrhs==1
-			xc = FGMRES_relaxation(Ac,bc,xc,2,MMG,gmresTol,false,true,numCores,param.memKcycle[level+1])[1];
+			xc = FGMRES_relaxation(AfunK,bc,xc,2,MMG,gmresTol,false,true,numCores,param.memKcycle[level])[1];
 		else
-			xc = BlockFGMRES_primitive(Ac,bc,xc,2,MMG,gmresTol,false,true,numCores,param.memKcycle[level+1])[1];
+			# xc = BlockFGMRES_relaxation(Ac,bc,xc,2,MMG,gmresTol,false,true,numCores,param.memKcycle[level+1])[1];
+			xc = BlockFGMRES(AfunK,bc,xc,2,MMG,gmresTol,false,true,numCores,param.memKcycle[level])[1];
 		end
     else
 		# println("before Coarse solve:",vecnorm(Ac'*xc-bc));
@@ -75,7 +91,7 @@ else
         # println("After Coarse solve 1:",vecnorm(Ac'*xc-bc));
 		if param.cycleType=='W'
             xc = recursiveCycle(param,bc,xc,level+1);
-        elseif param.cycleType=='F'
+		elseif param.cycleType=='F'
             param.cycleType='V';
             xc = recursiveCycle(param,bc,xc,level+1);
 			param.cycleType='F';
@@ -92,10 +108,15 @@ x = SpMatMul(oneType,PT,xc,oneType,x,numCores); # x += PT'*xc;
 r[:] = b;
 SpMatMul(-oneType,AT,x,oneType,r,numCores); #  r -= A'*x;
 if param.relaxType=="Jac-GMRES"
+	Afun = getAfun(AT,param.memRelax[level].Az,numCores)
 	if nrhs == 1
-		x = FGMRES_relaxation(AT,r,x,npostsmth,MM,gmresTol,false,true,numCores,param.memRelax[level])[1];
+		x = FGMRES_relaxation(Afun,r,x,npostsmth,MM,gmresTol,false,true,numCores,param.memRelax[level])[1];
 	else
-		x = BlockFGMRES_relaxation(AT,r,x,npostsmth,MM,gmresTol,false,false,numCores, param.memRelax[level])[1];
+		for ii=1:nrhs
+			x[:,ii] = FGMRES_relaxation(Afun,r[:,ii],x[:,ii],npostsmth,MM,gmresTol,false,true,numCores,param.memRelax[level])[1];
+		end
+		# x = BlockFGMRES(Afun,r,x,npresmth,MM,gmresTol,false,false,numCores, param.memRelax[level])[1];
+		# x = BlockFGMRES_relaxation(AT,r,x,npostsmth,MM,gmresTol,false,false,numCores, param.memRelax[level])[1];
 	end
 # elseif param.relaxType == "VankaFaces"
 	# x = RelaxVankaFaces(AT,r,x,b,D,npostsmth,numCores,param.Mesh)
@@ -136,7 +157,7 @@ elseif param.coarseSolveType == "BiCGSTAB"
 	tol = 0.1;
 	out= -2;
 	Afun = getAfun(AT,zeros(eltype(b),size(b)),param.numCores);
-	D = param.relaxPrecs[end];
+	D = param.LU;
 	y = zeros(eltype(b),size(b));
 	M1(xx::ArrayTypes) = (SpMatMul(D,xx,y,param.numCores);return y;);
 	if size(b,2)==1

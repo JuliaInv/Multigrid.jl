@@ -11,6 +11,7 @@ try
 	vMUMPS = Pkg.installed("MUMPS")
 	hasMUMPS = vMUMPS >= minMUMPSversion
 	if hasMUMPS
+		println("MUMPS!!")
 		using MUMPS;
 	end
 catch 
@@ -91,7 +92,7 @@ type MGparam
 	maxOuterIter		:: Int64
 	relativeTol			:: Float64
 	relaxType		    :: String
-	relaxParam			:: Float64
+	relaxParam			:: Union{Array{Float64},Float64}
 	relaxPre			:: Function
 	relaxPost			:: Function
 	cycleType			:: Char
@@ -129,13 +130,13 @@ end
 
 
 
-function getMGparam(levels::Int64,numCores::Int64,maxIter::Int64,relativeTol:: Float64,relaxType::String,relaxParam::Float64,
+function getMGparam(levels::Int64,numCores::Int64,maxIter::Int64,relativeTol:: Float64,relaxType::String,relaxParam,
 					relaxPre::Function,relaxPost::Function,cycleType::Char='V',coarseSolveType::String="NoMUMPS",strongConnParam::Float64=0.4,FilteringParam::Float64 = 0.0)
 return MGparam(levels,numCores,maxIter,relativeTol,relaxType,relaxParam,relaxPre,relaxPost,cycleType,[],[],[],[],Array(CYCLEmem,0),
 				Array(FGMRESmem,0),Array(FGMRESmem,0),coarseSolveType,[],0,strongConnParam,FilteringParam,Array(RegularMesh,0));
 end
 					
-function getMGparam(levels::Int64=3,numCores::Int64=8,maxIter::Int64=20,relativeTol::Float64=1e-6,relaxType::String="SPAI",relaxParam::Float64=1.0,
+function getMGparam(levels::Int64=3,numCores::Int64=8,maxIter::Int64=20,relativeTol::Float64=1e-6,relaxType::String="SPAI",relaxParam=1.0,
 					relaxPre::Int64=2,relaxPost::Int64=2,cycleType::Char='V',coarseSolveType::String="NoMUMPS",strongConnParam::Float64=0.4,FilteringParam::Float64 = 0.0)
 relaxPreFun(x) = relaxPre;
 relaxPostFun(x) = relaxPost;
@@ -185,6 +186,21 @@ else
 end
 return;
 end
+
+export defineCoarsestAinv;
+function defineCoarsestAinv(param::MGparam,AT::SparseMatrixCSC)
+if param.coarseSolveType == "MUMPS"
+	param.LU = factorMUMPS(AT',0,0);
+elseif param.coarseSolveType == "BiCGSTAB"
+	d = param.relaxParam./diag(AT);
+	param.LU = spdiagm(d);
+else
+	param.LU = lufact(AT');
+end
+param.doTranspose = 0;
+end
+
+
 
 function hierarchyExists(param::MGparam)
 return length(param.As) > 0;
