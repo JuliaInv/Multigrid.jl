@@ -165,7 +165,7 @@ if param.coarseSolveType == "MUMPS"
 		error("Is there another option for doTranspose????");
 	end
 elseif param.coarseSolveType == "BiCGSTAB"
-	param.relaxPrecs[end] = conj(param.relaxPrecs[end]);
+	param.LU = conj(param.LU);
 else
 	destroyCoarsestLU(param);
 	param.LU = lufact(param.As[end]');
