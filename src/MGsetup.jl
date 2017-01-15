@@ -69,12 +69,25 @@ function adjustMemoryForNumRHS(param::MGparam,rhsType::DataType = Float64,nrhs::
 if length(param.As)==0
 	error("The Hierarchy is empty - run a setup first.")
 end
-
-# if length(param.memCycle) > 0	
-	# if size(param.memCycle[1].x,2) == nrhs
-		# return param;
-	# end
-# end
+good = true;
+if length(param.memCycle) > 0
+	if size(param.memCycle[1].x,2) != nrhs 
+		good = false
+	elseif param.relaxType == "Jac-GMRES"
+		if isempty(param.memRelax[1])
+			good = false;
+		end
+	elseif param.cycleType == 'K'
+		if isempty(param.memRelax[1])
+			good = false;
+		end
+	end
+else
+	good = false;
+end
+if good
+	return param;
+end
 if nrhs==1
 	memRelax = Array(FGMRESmem,param.levels-1);
 	memKcycle = Array(FGMRESmem,max(param.levels-2,0));

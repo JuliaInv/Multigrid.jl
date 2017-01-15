@@ -102,7 +102,7 @@ end
 
 ####################################################################################################################
 function solveGMRES_MG(AT::SparseCSCTypes,param::MGparam,b::ArrayTypes,x0::ArrayTypes,verbose::Bool = false,inner=3)
-return solveGMRES_MG(getAfun(AT,zeros(eltype(b),size(b)),param.numCores),param,b,x0,verbose,inner);
+return solveGMRES_MG(getAfun(AT,param.memCycle[1].b,param.numCores),param,b,x0,verbose,inner);
 end
 
 function solveGMRES_MG(Afun::Function,param::MGparam,b::ArrayTypes,x0::ArrayTypes,verbose::Bool = false,inner=3)

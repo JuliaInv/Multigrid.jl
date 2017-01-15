@@ -48,6 +48,8 @@ println("****************************** GMRES preconditioned with AMG: (only one
 x[:] = 0.0;
 b1 = vec(b[:,1]);
 x1 = zeros(N);
+MG = getMGparam(levels,numCores,maxIter,relativeTol,relaxType,relaxParam,relaxPre,relaxPost,cycleType,coarseSolveType);
+SA_AMGsetup(Ar,MG,Float64,true,1,true);
 solveGMRES_MG(Ar,MG,b1,x1,true,2)
 
 x1 = zeros(N);
