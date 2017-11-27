@@ -13,7 +13,7 @@ nlevels = length(As);
 
 
 if level==nlevels # This actually does not need to happen unless one level only is used (i.e. exact solver).
-	x = solveCoarsest(param,b,x,param.doTranspose);
+	x = solveCoarsest(param,b,x);
 	return x;
 end
 
@@ -35,8 +35,6 @@ Afun = identity;
 if param.relaxType=="Jac-GMRES"
 	y = param.memRelax[level].v_prec;
 	MM(xx::ArrayTypes) = (SpMatMul(D,xx,y,numCores);return y;);
-	# Afun = getAfun(AT,param.memRelax[level].Az,numCores);
-	# norm(Afun(y))
 end
 
 PT = Ps[level];
@@ -49,6 +47,7 @@ if param.relaxType=="Jac-GMRES"
     Afun = getAfun(AT,param.memRelax[level].Az,numCores)
 	if nrhs == 1
 		x = FGMRES_relaxation(Afun,r,x,npresmth,MM,gmresTol,false,true,numCores,param.memRelax[level])[1];
+		# x = FGMRES(Afun,r,x,npresmth,MM,gmresTol,false,true,numCores,param.memRelax[level])[1];
 	else
 		for ii = 1:nrhs
 			x[:,ii] = FGMRES_relaxation(Afun,r[:,ii],x[:,ii],npresmth,MM,gmresTol,false,true,numCores,param.memRelax[level])[1];
@@ -56,8 +55,8 @@ if param.relaxType=="Jac-GMRES"
 		# x = BlockFGMRES(Afun,r,x,npresmth,MM,gmresTol,false,false,numCores, param.memRelax[level])[1];
 		# x = BlockFGMRES_relaxation(AT,r,x,npresmth,MM,gmresTol,false,false,numCores, param.memRelax[level])[1];
 	end
-# elseif param.relaxType == "VankaFaces"
-	# x = RelaxVankaFaces(AT,r,x,b,D,npresmth,numCores,param.Mesh)
+elseif param.relaxType == "VankaFaces"
+	x = RelaxVankaFacesColor(AT,x,b,r,D,npresmth,numCores,param.Meshes[level],param.transferOperatorType=="SystemsFacesMixedLinear");
 else
 	x = relax(AT,r,x,b,D,npresmth,numCores);
 end
@@ -71,24 +70,22 @@ bc = param.memCycle[level+1].b;
 bc = SpMatMul(RT,r,bc,numCores); 
 if level==nlevels-1
 	# println("solving coarsest");
-	xc = solveCoarsest(param,bc,xc,param.doTranspose);
+	xc = solveCoarsest(param,bc,xc);
 else
 	Ac = As[level+1];
     if param.cycleType == 'K'
-		# yz = zeros(eltype(bc),size(bc));
 		yzK = param.memKcycle[level].v_prec;
 		AfunK = getAfun(Ac,param.memKcycle[level].Az,numCores);
 		MMG(x) = (yzK[:] = 0.0; recursiveCycle(param,x,yzK,level+1)); # x does not change...
 		if nrhs==1
 			xc = FGMRES_relaxation(AfunK,bc,xc,2,MMG,gmresTol,false,true,numCores,param.memKcycle[level])[1];
+			# xc = FGMRES(AfunK,bc,xc,2,MMG,gmresTol,false,true,numCores,param.memKcycle[level])[1];
 		else
 			# xc = BlockFGMRES_relaxation(Ac,bc,xc,2,MMG,gmresTol,false,true,numCores,param.memKcycle[level+1])[1];
 			xc = BlockFGMRES(AfunK,bc,xc,2,MMG,gmresTol,false,true,numCores,param.memKcycle[level])[1];
 		end
     else
-		# println("before Coarse solve:",vecnorm(Ac'*xc-bc));
 		xc = recursiveCycle(param,bc,xc,level+1);# xc changes, bc does not change
-        # println("After Coarse solve 1:",vecnorm(Ac'*xc-bc));
 		if param.cycleType=='W'
             xc = recursiveCycle(param,bc,xc,level+1);
 		elseif param.cycleType=='F'
@@ -96,7 +93,6 @@ else
             xc = recursiveCycle(param,bc,xc,level+1);
 			param.cycleType='F';
         end
-		# println("After Coarse solve 2:",vecnorm(Ac'*xc-bc));
     end
 end
 
@@ -111,15 +107,16 @@ if param.relaxType=="Jac-GMRES"
 	Afun = getAfun(AT,param.memRelax[level].Az,numCores)
 	if nrhs == 1
 		x = FGMRES_relaxation(Afun,r,x,npostsmth,MM,gmresTol,false,true,numCores,param.memRelax[level])[1];
+		# x = FGMRES(Afun,r,x,npostsmth,MM,gmresTol,false,true,numCores,param.memRelax[level])[1];
 	else
 		for ii=1:nrhs
 			x[:,ii] = FGMRES_relaxation(Afun,r[:,ii],x[:,ii],npostsmth,MM,gmresTol,false,true,numCores,param.memRelax[level])[1];
 		end
-		# x = BlockFGMRES(Afun,r,x,npresmth,MM,gmresTol,false,false,numCores, param.memRelax[level])[1];
+		# x = BlockFGMRES(Afun,r,x,npostsmth,MM,gmresTol,false,false,numCores, param.memRelax[level])[1];
 		# x = BlockFGMRES_relaxation(AT,r,x,npostsmth,MM,gmresTol,false,false,numCores, param.memRelax[level])[1];
 	end
-# elseif param.relaxType == "VankaFaces"
-	# x = RelaxVankaFaces(AT,r,x,b,D,npostsmth,numCores,param.Mesh)
+elseif param.relaxType == "VankaFaces"
+	x = RelaxVankaFacesColor(AT,x,b,r,D,npostsmth,numCores,param.Meshes[level],param.transferOperatorType=="SystemsFacesMixedLinear");
 else
 	x = relax(AT,r,x,b,D,npostsmth,numCores);
 end
@@ -149,11 +146,10 @@ end
 
 function solveCoarsest(param::MGparam,b::ArrayTypes,x::ArrayTypes,doTranspose::Int64=0)
 if param.coarseSolveType == "MUMPS"
-	applyMUMPS(param.LU,b,x,doTranspose);
+	applyMUMPS(param.LU,b,x,param.doTranspose);
 elseif param.coarseSolveType == "BiCGSTAB"
-	
 	AT = param.As[end];
-	maxIter = 10;
+	maxIter = 100;
 	tol = 0.1;
 	out= -2;
 	Afun = getAfun(AT,zeros(eltype(b),size(b)),param.numCores);
@@ -167,12 +163,33 @@ elseif param.coarseSolveType == "BiCGSTAB"
 		x, flag,rnorm,iter = KrylovMethods.blockBiCGSTB(Afun,b,tol = tol,maxIter = maxIter,M1 = M1,M2 = identity,out=out);
 	end
 	# println("Applied ",iter," BiCGSTAB");
-else
-	if doTranspose==1
-		error(" MULTIGRID: solveCoarsest(): If doTranspose ==1 then it's better to use MUMPS ");
+elseif param.coarseSolveType == "GMRES"
+	AT = param.As[end];
+	maxIter = 1;
+	tol = 0.01;
+	out= -2;
+	Afun = getAfun(AT,zeros(eltype(b),size(b)),param.numCores);
+	D = param.LU;
+	y = zeros(eltype(b),size(b));
+	M2(xx::ArrayTypes) = (SpMatMul(D,xx,y,param.numCores);return y;);
+	if size(b,2)==1
+		b = vec(b);
+		# x, flag,rnorm,iter = KrylovMethods.gmres(Afun,b,40,tol = tol,maxIter = maxIter,M = M2,out=out);
+		x[:] = 0.0;
+		(x,) = FGMRES(Afun,b,x,10,M2,tol,false,false,param.numCores);
+	else
+		error("Multiple RHS not supported");
 	end
+else
 	x = param.LU\b;
 end
 return x;
 end
+
+
+
+
+
+
+
 

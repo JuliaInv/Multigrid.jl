@@ -7,9 +7,9 @@ SIAM Journal on Scientific Computing, 37 (1), A30-A54, 2015.
 """
 
 function SA_AMGsetup(AT::SparseMatrixCSC,param::MGparam,rhsType::DataType = Float64,symm::Bool = true,nrhs::Int64 = 1,verbose::Bool=false)
-Ps = Array(SparseMatrixCSC,param.levels-1);
-Rs = Array(SparseMatrixCSC,param.levels-1);
-As = Array(SparseMatrixCSC,param.levels);
+Ps = Array{SparseMatrixCSC}(param.levels-1);
+Rs = Array{SparseMatrixCSC}(param.levels-1);
+As = Array{SparseMatrixCSC}(param.levels);
 
 if symm == false
 	error("not supported yet...");
@@ -17,7 +17,7 @@ end
 	
 N = size(AT,2);
 As[1] = AT;
-relaxPrecs = Array(SparseMatrixCSC,param.levels-1);
+relaxPrecs = Array{SparseMatrixCSC}(param.levels-1);
 Cop = nnz(AT);
 for l = 1:(param.levels-1)
 	if verbose

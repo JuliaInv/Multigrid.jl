@@ -162,9 +162,9 @@ for k=1:outerIter
 	end
 	num_iter = num_iter+1;
 	num_prec = num_prec + length(rnorms)*nrhs;
-	# if verbose
-		# println("relres: ", rnorms[end]/res_init)
-	# end
+	if verbose
+		println(k,": relres: ", rnorms[end]/res_init)
+	end
 	if rnorms[end] < tol
 		break;
 	end

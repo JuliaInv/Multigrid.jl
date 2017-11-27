@@ -7,7 +7,7 @@ println("************************************************* Example 2D **********
 domain = [0.0, 1.0, 0.0, 1.0];
 n = [50,50];
 Mr = getRegularMesh(domain,n)
-m  = exp(randn(prod(n)));
+m  = exp.(randn(prod(n)));
 Ar = getDivSigGradMatrix(vec(m),Mr);
 Ar = Ar + 1e-8*norm(Ar,1)*speye(size(Ar,2));
 

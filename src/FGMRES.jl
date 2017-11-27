@@ -14,18 +14,17 @@ mem.V[:]=0.0;
 mem.Z[:]=0.0;
 end
 
-function getFGMRESmem(n::Int64,flexible::Bool,T::Type,k::Int64,m::Int64=1,allocTempVecs::Bool=false)
+function getFGMRESmem(n::Int64,flexible::Bool,T::Type,k::Int64,m::Int64=1)
 v_prec = zeros(T,0);
 Az = zeros(T,0);
-# if allocTempVecs
-	if m==1
-		Az = zeros(T,n);
-		v_prec = zeros(T,n);
-	else
-		Az = zeros(T,n,m);
-		v_prec = zeros(T,n,m);
-	end
-# end
+if m==1
+	Az = zeros(T,n);
+	v_prec = zeros(T,n);
+else
+	Az = zeros(T,n,m);
+	v_prec = zeros(T,n,m);
+end
+
 if flexible 
 	return FGMRESmem(v_prec,Az,zeros(T,n,k*m),zeros(T,n,k*m));
 else
@@ -37,14 +36,14 @@ end
 function getEmptyFGMRESmem()
 return FGMRESmem(zeros(0),zeros(0),zeros(0),zeros(0));
 end
-
+import Base.isempty
 function isempty(mem::FGMRESmem)
 return size(mem.V,1)==0;
 end
 
 function FGMRES(AT::SparseMatrixCSC,r0::Vector,x0::Vector,inner::Int64,prec::Function,TOL::Float64,
                  verbose::Bool,flexible::Bool,numCores::Int64, mem::FGMRESmem =  getEmptyFGMRESmem())
-Az = zeros(eltype(z),size(z));				 
+Az = zeros(eltype(r0),size(r0));				 
 function Afun(z::Vector)
 	SpMatMul(AT,z,Az,numCores);
 	return Az;
@@ -68,7 +67,7 @@ function FGMRES(Afun::Function,r0::Vector,x0::Vector,inner::Int64,prec::Function
                  verbose::Bool,flexible::Bool,numCores::Int64, mem::FGMRESmem = getEmptyFGMRESmem())
 n = length(r0);
 if isempty(mem)
-	warn("Allocating memory in GMRES")
+	# warn("Allocating memory in GMRES")
 	mem = getFGMRESmem(n,flexible,eltype(r0),inner);
 else
     resetMem(mem);
@@ -85,6 +84,7 @@ TYPE = eltype(r0);
 H = zeros(TYPE,inner+1,inner);
 xi = zeros(TYPE,inner+1);
 t = zeros(TYPE,inner);
+y = copy(t);
 xi[1] = betta;
 
 constOne = one(TYPE);
@@ -148,7 +148,7 @@ for j = 1:inner
         break;
     end
 end
-y = pinv(H)*xi;
+y[:] = pinv(H)*xi;
 # norm(H*y - xi)
 if flexible
 	BLAS.gemv!('N', constOne, Z, y,constZero,w); # w = Z*y  #This is the correction that corresponds to the residual. 
@@ -184,7 +184,6 @@ TYPE = eltype(r0);
 H = zeros(TYPE,inner,inner);
 xi = zeros(TYPE,inner);
 t = zeros(TYPE,inner);
-D = zeros(TYPE,inner,inner); # normalization matrix.
 
 constOne = one(TYPE);
 constZero = zero(TYPE);
@@ -216,7 +215,7 @@ for j = 1:inner
 	H[:,j] = t;
 	H[j,:] = t';
 	H = 0.5*H + 0.5*H';
-	t = pinv(H)*xi;
+	t[:] = pinv(H)*xi;
 	
 	rnorms[j] = sqrt(real(dot(t,H*t)-2.0*dot(t,xi)+rnorm0^2));
 

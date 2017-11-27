@@ -10,7 +10,7 @@ domain = [0.0, 1.0, 0.0, 1.0];
 n      = [50,50];
 Mr     = getRegularMesh(domain,n)
 G      = getNodalGradientMatrix(Mr);
-m      = spdiagm(exp(randn(size(G,1))));
+m      = spdiagm(exp.(randn(size(G,1))));
 Ar     = G'*m*G;
 Ar     = Ar + 1e-1*norm(Ar,1)*speye(size(Ar,2));
 N      = size(Ar,2); 
@@ -25,7 +25,7 @@ relaxParam  = 1.0;
 relaxPre 	= 2;
 relaxPost   = 2;
 cycleType   ='V';
-coarseSolveType = "NoMUMPS";
+coarseSolveType = "Julia";
 
 MG = getMGparam(levels,numCores,maxIter,relativeTol,relaxType,relaxParam,relaxPre,relaxPost,cycleType,coarseSolveType);
 

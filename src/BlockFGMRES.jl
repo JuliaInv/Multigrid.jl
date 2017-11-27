@@ -125,6 +125,7 @@ AZbig = Array(Array{T,2},0);
 return BlockFGMRESmem(Zbig,AZbig);
 end
 
+import Base.isempty
 function isempty(mem::BlockFGMRESmem)
 return length(mem.AZbig)==0;
 end

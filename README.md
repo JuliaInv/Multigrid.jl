@@ -21,7 +21,7 @@ Coarsest Grid can be solved using [`MUMPS`] (https://github.com/JuliaSparse/MUMP
 
 # Requirements
 
-This package is intended to use with julia versions 0.5.x.
+This package is intended to use with julia versions 0.6.x.
 
 This package is an add-on for [`jInv`](https://github.com/JuliaInv/jInv.jl), which needs to be installed (for regular mesh module).
 For the testing -   [`DivSigGrad`] (https://github.com/JuliaInv/DivSigGrad.jl) needs to be installed too.
