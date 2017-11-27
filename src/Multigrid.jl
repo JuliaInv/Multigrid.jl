@@ -20,16 +20,22 @@ end
 hasParSpMatVec = false
 const minVerParSpMatVec = VersionNumber(0,0,1)
 	vParSpMatVec = VersionNumber(0,0,0)
-try 
-	vParSpMatVec = Pkg.installed("ParSpMatVec")
-	hasParSpMatVec = vParSpMatVec>=minVerParSpMatVec
-catch 
+try
+ 	using ParSpMatVec
+ 	hasParSpMatVec = true
+ 	if myid()==1
+ 		vParSpMatVec = Pkg.installed("ParSpMatVec")
+ 		if vParSpMatVec < minVerParSpMatVec;
+ 			warn("ParSpMatVec is outdated! Please update to version $(minVerParSpMatVec) or higher.")
+ 		end
+ 	end
+catch	
 end
-hasParSpMatVec = true;
 if hasParSpMatVec
 	println("Using ParSpMatVec")
 	using ParSpMatVec
 end
+
 
 export MGparam;
 export getMGparam, MGsetup, clear!
