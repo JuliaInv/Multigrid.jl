@@ -30,8 +30,8 @@ For the testing -   [`DivSigGrad`] (https://github.com/JuliaInv/DivSigGrad.jl) n
 
 ```
 Pkg.clone("https://github.com/JuliaInv/jInv.jl","jInv")
-Pkg.clone("https://github.com/JuliaInv/Multigrid.jl","Multigrid")
 Pkg.clone("https://github.com/JuliaInv/DivSigGrad.jl","DivSigGrad")
+Pkg.clone("https://github.com/JuliaInv/Multigrid.jl","Multigrid")
 Pkg.clone("https://github.com/JuliaInv/ParSpMatVec.jl","ParSpMatVec")
 Pkg.build("ParSpMatVec");
 
