@@ -21,10 +21,9 @@ Coarsest Grid can be solved using [`MUMPS`] (https://github.com/JuliaSparse/MUMP
 
 # Requirements
 
-This package is intended to use with julia versions 0.6.x.
+This package is intended to use with julia versions 0.7-1.0.
 
-This package is an add-on for [`jInv`](https://github.com/JuliaInv/jInv.jl), which needs to be installed (for regular mesh module).
-For the testing -   [`DivSigGrad`] (https://github.com/JuliaInv/DivSigGrad.jl) needs to be installed too.
+This package is an add-on for [`jInv`](https://github.com/JuliaInv/jInv.jl), which needs to be installed (mostly for regular mesh module).
 
 # Installation
 
@@ -36,7 +35,3 @@ Pkg.build("ParSpMatVec");
 
 Pkg.test("Multigrid")
 ```
-
-# Examples
-
-Under "examples/SAforDivSigGrad.jl" you can find the 2D experiment that was shown in the paper above. 
