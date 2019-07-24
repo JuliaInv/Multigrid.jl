@@ -16,7 +16,6 @@ before_install:
 #   - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
 
 script:
-script:
   - julia --check-bounds=yes -e 'using Pkg; Pkg.build(); Pkg.test("Multigrid";coverage=true)'
 
 after_success:

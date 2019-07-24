@@ -39,8 +39,8 @@ end
 	run(`gcc -O3 -cpp -fopenmp -shared -DBUILD_DLL  $src1 -o $outfile1`)
 	run(`gcc -O3 -cpp -fopenmp -shared -DBUILD_DLL  $src2 -o $outfile2`)
 end
-catch
-	println("Multigrid::build: Unable to build Multigrid")
+catch 
+	@warn "Multigrid::build: Unable to build Multigrid"
 end
 
 
