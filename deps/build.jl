@@ -1,14 +1,11 @@
-using BinDeps
 
-@BinDeps.setup
-
-
+try 
 # construct absolute path
 depsdir  = splitdir(Base.source_path())[1]
 builddir = joinpath(depsdir,"builds")
 srcdir   = joinpath(depsdir,"src")
 
-println("=== Building ParSpMatVec ===")
+println("=== Building Multigrid ===")
 println("depsdir  = $depsdir")
 println("builddir = $builddir")
 println("srcdir   = $srcdir")
@@ -21,7 +18,7 @@ if !isdir(builddir)
 	end
 end
 
-@static if is_unix()
+@static if Sys.isunix()
 	src1 = joinpath(srcdir,"Vanka.c")
 	src2 = joinpath(srcdir,"parRelax.c");
 	outfile1 = joinpath(builddir,"Vanka.so")
@@ -34,17 +31,20 @@ end
 	end
 end
 
-@static if is_windows() 
+@static if Sys.iswindows() 
 	src1 = joinpath(srcdir,"Vanka.c")
 	src2 = joinpath(srcdir,"parRelax.c");
 	outfile1 = joinpath(builddir,"Vanka.dll")
 	outfile2 = joinpath(builddir,"parRelax.dll")
-	@build_steps begin
+	#@build_steps begin
 		println("gcc version")
 		run(`gcc --version`)
 		run(`gcc -O3 -cpp -fopenmp -shared -DBUILD_DLL  $src1 -o $outfile1`)
 		run(`gcc -O3 -cpp -fopenmp -shared -DBUILD_DLL  $src2 -o $outfile2`)
-	end
+	#end
+end
+catch
+	println("Multigrid::build: Unable to build Multigrid")
 end
 
 

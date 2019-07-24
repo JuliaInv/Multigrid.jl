@@ -4,7 +4,6 @@ authors = ["Eran Treister <erantreister@gmail.com>"]
 version = "0.1.0"
 
 [deps]
-BinDeps = "9e28174c-4ba2-5203-b857-d8d62c4213ee"
 Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 KrylovMethods = "9a2cd570-f05c-5dc1-9209-93ad6f5727f7"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
