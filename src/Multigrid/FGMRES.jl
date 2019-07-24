@@ -1,6 +1,6 @@
 export getFGMRESmem,FGMRES,FGMRES_relaxation
 
-type FGMRESmem
+mutable struct FGMRESmem
 	v_prec              ::ArrayTypes ## memory for the result of the preconditioner
 	Az					::ArrayTypes ## memory for the result of A*z.
 	V    				::ArrayTypes
@@ -8,13 +8,15 @@ type FGMRESmem
 end
 
 function resetMem(mem::FGMRESmem)
-mem.v_prec[:]=0.0;
-mem.Az[:]=0.0;
-mem.V[:]=0.0;
-mem.Z[:]=0.0;
+mem.v_prec[:].=0.0;
+mem.Az[:].=0.0;
+mem.V[:].=0.0;
+mem.Z[:].=0.0;
 end
 
 function getFGMRESmem(n::Int64,flexible::Bool,T::Type,k::Int64,m::Int64=1)
+## Effectively we do not use v_prec and Az.
+
 v_prec = zeros(T,0);
 Az = zeros(T,0);
 if m==1
@@ -43,23 +45,12 @@ end
 
 function FGMRES(AT::SparseMatrixCSC,r0::Vector,x0::Vector,inner::Int64,prec::Function,TOL::Float64,
                  verbose::Bool,flexible::Bool,numCores::Int64, mem::FGMRESmem =  getEmptyFGMRESmem())
-Az = zeros(eltype(r0),size(r0));				 
-function Afun(z::Vector)
-	SpMatMul(AT,z,Az,numCores);
-	return Az;
+return FGMRES(getAfun(AT,zeros(eltype(r0),size(r0)),numCores),r0,x0,inner,prec,TOL,verbose,flexible,numCores,mem);
 end
-return FGMRES(Afun,r0,x0,inner,prec,TOL,verbose,flexible,numCores,mem);
-end
-
 
 function FGMRES_relaxation(AT::SparseMatrixCSC,r0::Vector,x0::Vector,inner::Int64,prec::Function,TOL::Float64,
                  verbose::Bool,flexible::Bool,numCores::Int64, mem::FGMRESmem =  getEmptyFGMRESmem())
-Az = zeros(eltype(r0),size(r0));				 
-function Afun(z::Vector)
-	SpMatMul(AT,z,Az,numCores);
-	return Az;
-end
-return FGMRES_relaxation(Afun,r0,x0,inner,prec,TOL,verbose,flexible,numCores,mem);
+return FGMRES_relaxation(getAfun(AT,zeros(eltype(r0),size(r0)),numCores),r0,x0,inner,prec,TOL,verbose,flexible,numCores,mem);
 end
 
 
@@ -192,8 +183,8 @@ constZero = zero(TYPE);
 Z = mem.Z;
 AZ = mem.V;
 
-# w[:] = r0;
-w = 0;
+
+w = zeros(eltype(r0),0);
 rnorms = zeros(inner);
 
 for j = 1:inner
@@ -207,10 +198,9 @@ for j = 1:inner
 	w = Afun(z); # w = A'*z;# w = SpMatMul(A,z,w,numCores);
 	AZ[:,j] = w;  # no memory problem with this line....
 
-	
-	xi[j] = dot(w,r0);	
-	
 	BLAS.gemv!('C', constOne, AZ, w,constZero,t);
+	
+	xi[j] = dot(w,r0);
 	
 	H[:,j] = t;
 	H[j,:] = t';

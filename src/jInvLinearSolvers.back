@@ -1,4 +1,4 @@
-module Multigrid
+module jInvLinearSolvers
 	using LinearAlgebra
 	using SparseArrays
 	
@@ -20,7 +20,7 @@ module Multigrid
 	ArrayTypes = Union{Array{ComplexF64},Array{ComplexF32},Array{Float64},Array{Float32}}
 	
 	include("DomainDecomposition\\DomainDecomposition.jl");
-	include("Multigrid\\MGdef.jl");
+	include("Multigrid\\Multigrid.jl");
 end
 
 
@@ -36,5 +36,3 @@ end
 	# end
 # catch 
 # end
-
-# end # module

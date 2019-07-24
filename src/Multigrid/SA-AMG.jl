@@ -5,36 +5,36 @@ Based on the paper
 Eran Treister and Irad Yavneh, Non-Galerkin Multigrid based on Sparsified Smoothed Aggregation. 
 SIAM Journal on Scientific Computing, 37 (1), A30-A54, 2015.
 """
-
 function SA_AMGsetup(AT::SparseMatrixCSC,param::MGparam,rhsType::DataType = Float64,symm::Bool = true,nrhs::Int64 = 1,verbose::Bool=false)
-Ps = Array{SparseMatrixCSC}(param.levels-1);
-Rs = Array{SparseMatrixCSC}(param.levels-1);
-As = Array{SparseMatrixCSC}(param.levels);
+Ps = Array{SparseMatrixCSC}(undef,param.levels-1);
+Rs = Array{SparseMatrixCSC}(undef,param.levels-1);
+As = Array{SparseMatrixCSC}(undef,param.levels);
 
 if symm == false
 	error("not supported yet...");
 end	
-	
+
+T_time = 0;	
 N = size(AT,2);
 As[1] = AT;
-relaxPrecs = Array{SparseMatrixCSC}(param.levels-1);
+relaxPrecs = Array{SparseMatrixCSC}(undef,param.levels-1);
 Cop = nnz(AT);
 for l = 1:(param.levels-1)
 	if verbose
-		tic()
+		T_time = time_ns();
 	end
     AT = As[l];
     if param.relaxType=="Jac" || param.relaxType=="Jac-GMRES"
 		d = param.relaxParam./diag(AT);
-		relaxPrecs[l] = spdiagm(d);#d;# here we need to take the conjugate for the SpMatVec, but we give At instead of A so it cancels
+		relaxPrecs[l] = sparse(Diagonal(d));#d;# here we need to take the conjugate for the SpMatVec, but we give At instead of A so it cancels
 	elseif param.relaxType=="SPAI"
-		relaxPrecs[l] = spdiagm(param.relaxParam*getSPAIprec(AT)); # here we need to take the conjugate for the SpMatVec, but we give At instead of A so it cancels
+		relaxPrecs[l] = sparse(Diagonal(param.relaxParam*getSPAIprec(AT))); # here we need to take the conjugate for the SpMatVec, but we give At instead of A so it cancels
 	else
 		error("Unknown relaxation type !!!!");
 	end
 	P0 = getAggregation(AT,param.strongConnParam);
 	Nc = size(P0,2);
-	P0 = P0';
+	P0 = sparse(P0');
 	if (size(P0,1)==size(P0,2))
 		if verbose; println(string("Stopped Coarsening at level ",l)); end
 		param.levels = l;
@@ -47,7 +47,7 @@ for l = 1:(param.levels-1)
 		DAT = AT*relaxPrecs[l];
 		rhoDAT = min(norm(DAT,1),norm(DAT,Inf));
 		PT = P0 - (1.33/rhoDAT)*P0*DAT;
-		Rs[l] = PT'; # this is becasue we hold the transpose of the matrices and P = R' anyway here....
+		Rs[l] = sparse(PT'); # this is becasue we hold the transpose of the matrices and P = R' anyway here....
 		Ps[l] = PT;
 
 		Act = Ps[l]*AT*Rs[l];
@@ -55,19 +55,20 @@ for l = 1:(param.levels-1)
 		Cop = Cop + nnz(Act);
 		#fprintf('setup level %3d, dim:%3dx%3d, nnz:%3d\n',nlevels+1,nc(1),nc(2),nnz(Ac))
 		
-		if verbose; println("MG setup: ",N," took:",toq()); end;
+		if verbose; println("MG setup: ",N," took:",(time_ns() - T_time)/1e+9); end;
 		N = Nc;
 	end
 end
 if verbose 
-	tic()
+	T_time = time_ns();
 	println("MG Setup: Operator complexity = ",Cop/nnz(As[1]));
 end
-As[end] = As[end] + 1e-8*norm(As[end],1)*speye(size(As[end],2));
+As[end] = As[end] + 1e-8*norm(As[end],1)*sparse(1.0I,size(As[end],2),size(As[end],2));
+
 defineCoarsestAinv(param,As[end]);
 
 if verbose 
-	println("MG setup coarsest: ",N,", done LU in ",toq());
+	println("MG setup coarsest: ",N,", done LU in ",(time_ns() - T_time)/1e+9);
 end
 param.As = As;
 param.Ps = Ps;
@@ -79,7 +80,7 @@ end
 
 function getAggregation(AT::SparseMatrixCSC,strengthConnParam::Float64)
 	if size(AT,2) <= 1000
-		return speye(size(AT,2));
+		return sparse(1.0I,size(AT,2),size(AT,2));
 	end
 	S = getStrengthMatrix(AT,strengthConnParam);
 	aggr = neighborhoodAggregationNew(S);
@@ -98,7 +99,7 @@ for j = 1:n
 			maxVal_j = S.nzval[gidx]; 
 		end
 	end
-	scal_k = 1./maxVal_j;
+	scal_k = 1.0 ./maxVal_j;
 	for gidx = S.colptr[j] : S.colptr[j+1]-1
 		S.nzval[gidx]*=scal_k; 
 	end
@@ -215,7 +216,7 @@ end
 function aggrArray2P(aggr)
 	fine2coarse = zeros(Int64,size(aggr));
 	n = length(aggr);
-	I = find(aggr .== 1:n);
+	I = findall(aggr .== 1:n);
 	fine2coarse[I] = 1:length(I);
 	aggr = fine2coarse[aggr];
 	if sum(aggr.==0)>0

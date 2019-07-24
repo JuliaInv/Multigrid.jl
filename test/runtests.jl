@@ -1,4 +1,7 @@
-include("testSAforDivSigGrad.jl")
-include("testGMGRAPforPoisson.jl")
-include("testGMG.jl")
-include("testLinSolveMGWrapper.jl");
+using Test
+@testset "Multigrid" begin
+    include("Multigrid/runtests.jl")
+end
+
+
+

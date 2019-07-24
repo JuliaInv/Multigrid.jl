@@ -1,8 +1,11 @@
-
 function recursiveCycle(param::MGparam,b::ArrayTypes,x::ArrayTypes,level::Int64)
 
 # println(string("Starting level ", level));
 
+TYPE = getMGType(param,b);
+if eltype(x)!=TYPE
+	error("Should not be this way.");
+end
 gmresTol = 1e-5;
 
 n = size(b,1);
@@ -11,9 +14,10 @@ numCores = param.numCores;
 As = param.As;
 nlevels = length(As);
 
-
 if level==nlevels # This actually does not need to happen unless one level only is used (i.e. exact solver).
-	x = solveCoarsest(param,b,x);
+	r = param.memCycle[level].r;
+	r[:] = b;
+	x = solveCoarsest(param,r,x);
 	return x;
 end
 
@@ -21,12 +25,12 @@ Ps = param.Ps;
 Rs = param.Rs;
 AT = As[level];
 
-const oneType = one(eltype(b));
-const zeroType = zero(eltype(b));
+oneType = one(TYPE);
+zeroType = zero(TYPE);
 r = param.memCycle[level].r;
 
 r[:] = b;
-if vecnorm(x)>0.0	
+if norm(x)>0.0	
    	SpMatMul(-oneType,AT,x,oneType,r,numCores)#  r -= A'*x;
 end
 D = param.relaxPrecs[level];
@@ -62,10 +66,12 @@ else
 end
 
 SpMatMul(-oneType,AT,x,zeroType,r,numCores); #  r = -A'*x;
+
 addVectors(oneType,b,r); # r = r + b;
 
+
 xc = param.memCycle[level+1].x;
-xc[:] = 0.0;
+xc[:] .= 0.0;
 bc = param.memCycle[level+1].b;
 bc = SpMatMul(RT,r,bc,numCores); 
 if level==nlevels-1
@@ -129,10 +135,9 @@ end
 function relax(AT::SparseMatrixCSC,r::ArrayTypes,x::ArrayTypes,b::ArrayTypes,D::SparseMatrixCSC,numit::Int64,numCores::Int64)
 # x is actually the output... x and is being changed in the iterations.
 # r does not end up accurate becasue we do not update it in the last iteration.
-const oneType = one(eltype(r));
-const zeroType = zero(eltype(r));
+oneType = one(eltype(r));
+zeroType = zero(eltype(r));
 # nr0 = vecnorm(r);
-# println(nr0)
 for i=1:numit-1	
 	SpMatMul(oneType,D,r,oneType,x,numCores); # x = x + D'*r
 	SpMatMul(-oneType,AT,x,zeroType,r,numCores) # r = -A'*x
@@ -145,8 +150,17 @@ end
 
 
 function solveCoarsest(param::MGparam,b::ArrayTypes,x::ArrayTypes,doTranspose::Int64=0)
+
+# if isa(param.LU,AbstractSolver)
+	# AT = param.As[end];
+	# (x,param.LU) = solveLinearSystem!(AT,b,x,param.LU);
+	# return x;
+# end
+
+
+
 if param.coarseSolveType == "MUMPS"
-	applyMUMPS(param.LU,b,x,param.doTranspose);
+	applyMUMPS(param.LU,b,xt,param.doTranspose);
 elseif param.coarseSolveType == "BiCGSTAB"
 	AT = param.As[end];
 	maxIter = 100;
@@ -180,8 +194,16 @@ elseif param.coarseSolveType == "GMRES"
 	else
 		error("Multiple RHS not supported");
 	end
+elseif param.coarseSolveType == "VankaFaces"
+	AT = param.As[end];
+	inner = 20;
+	Afun = getAfun(AT,zeros(eltype(b),size(b)),param.numCores);
+	out= -2;
+	x = KrylovMethods.fgmres(Afun,b,inner;tol = 0.8,maxIter = 5,M = param.LU,x = x,flexible = true,out = out)[1];
+	# println("Coarsest norm is: ",norm(Afun(y) - b)/norm(b));
 else
-	x = param.LU\b;
+	z = param.LU\b;	
+	x[:] = z;
 end
 return x;
 end

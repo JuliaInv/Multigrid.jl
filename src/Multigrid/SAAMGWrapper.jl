@@ -3,7 +3,7 @@ export solveLinearSystem!,clear!,copySolver
 
 ## this is a wrapper for using the SA AMG preconditioner using the abstractSolver interface. 
 
-type SA_AMGsolver <: AbstractSolver
+mutable struct SA_AMGsolver <: AbstractSolver
 	MG				:: MGparam
 	Krylov			:: String
 	sym				:: Int64  #0=unsymmetric, 1=symm. pos def, 2=general symmetric
@@ -25,7 +25,7 @@ function getSA_AMGsolver(MG::MGparam,Krylov::String="BiCGSTAB"; sym::Int64=1, ou
 	return SA_AMGsolver(MG,Krylov,sym,out,false,0,MG.relativeTol,0,0.0,0.0);
 end
 
-import jInv.LinearSolvers.solveLinearSystem!;
+import Multigrid.solveLinearSystem!;
 function solveLinearSystem!(A,B,X,param::SA_AMGsolver,doTranspose=0)
 	if issparse(B)
 		B = full(B);
@@ -36,7 +36,7 @@ function solveLinearSystem!(A,B,X,param::SA_AMGsolver,doTranspose=0)
 	if param.doClear==1
 		clear!(param.MG);
 	end
-	if vecnorm(B) == 0.0
+	if norm(B) == 0.0
 		X[:] = 0.0;
 		return X, param;
 	end
@@ -57,27 +57,23 @@ function solveLinearSystem!(A,B,X,param::SA_AMGsolver,doTranspose=0)
 		elseif (param.sym != 1) && (doTransposeIterative == 0)
 			A = A';
 		end
-		tic()
-		SA_AMGsetup(A,param.MG,TYPE,param.sym==1,nrhs,verbose);
-		param.timeSetup += toq();
+		param.timeSetup += @elapsed SA_AMGsetup(A,param.MG,TYPE,param.sym==1,nrhs,verbose);
 		param.MG.doTranspose = doTranspose; # the doTranspose of MG MUST be synced with the doTranspose of the interface.
 	end 
 	
 	if (param.sym != 1) && (doTranspose != param.MG.doTranspose)
-		tic()
-		transposeHierarchy(param.MG);
-		param.timeSetup += toq();
+		param.timeSetup += @elapsed transposeHierarchy(param.MG);
 	end
 	BLAS.set_num_threads(param.MG.numCores);
 	Afun = getAfun(param.MG.As[1],zeros(TYPE,size(B)),param.MG.numCores);
-	tic()
+	time = time_ns();
 	if param.Krylov=="BiCGSTAB"
 		X, param.MG,num_iter = solveBiCGSTAB_MG(Afun,param.MG,B,X,verbose);
 	elseif param.Krylov=="PCG"
 		X, param.MG,num_iter = solveCG_MG(Afun,param.MG,B,X,verbose);
 	end
 	param.nIter += num_iter*size(X,2);
-	param.timeSolve+=toq();
+	param.timeSolve+=(time_ns() - time)/1e+9;
 
 	if num_iter >= param.MG.maxOuterIter - 1
 		warn("MG solver reached maximum iterations without convergence");
@@ -86,7 +82,7 @@ function solveLinearSystem!(A,B,X,param::SA_AMGsolver,doTranspose=0)
 end 
 
 
-import jInv.LinearSolvers.copySolver;
+
 function copySolver(s::SA_AMGsolver)
 	# copies absolutely what's necessary.
 	return SA_AMGsolver(Multigrid.copySolver(s.MG),s.Krylov,s.sym,s.out,s.isTranspose,s.doClear,s.tol,0,0.0,0.0);

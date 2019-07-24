@@ -1,6 +1,9 @@
 export getLinearOperatorsSystemsFaces,getInjectionOperatorsSystemsFaces,MGsetupSystems,getFacesStaggeredIndicesOfCell
 ## n is always in cells in this file
 
+function speye(n)
+	return sparse(1.0I,n,n);
+end
 
 function getInjectionOperatorsSystemsFaces(n::Array{Int64},withCellsBlock::Bool)
 	if length(n) == 2
@@ -9,9 +12,9 @@ function getInjectionOperatorsSystemsFaces(n::Array{Int64},withCellsBlock::Bool)
 		
 		if withCellsBlock
 			R3, = getRestrictionCellCentered(n);
-			Rinj = blkdiag(R1,R2,R3);
+			Rinj = blockdiag(R1,R2,R3);
 		else
-			Rinj = blkdiag(R1,R2);
+			Rinj = blockdiag(R1,R2);
 		end
 	else
 		R1, = getRestrictionFacesInjectionUj(n,1);
@@ -19,9 +22,9 @@ function getInjectionOperatorsSystemsFaces(n::Array{Int64},withCellsBlock::Bool)
 		R3, = getRestrictionFacesInjectionUj(n,3);
 		if withCellsBlock
 			R4, = getRestrictionCellCentered(n);
-			Rinj = blkdiag(R1,R2,R3,R4);
+			Rinj = blockdiag(R1,R2,R3,R4);
 		else
-			Rinj = blkdiag(R1,R2,R3);
+			Rinj = blockdiag(R1,R2,R3);
 		end
 	end
 	return Rinj;
@@ -33,17 +36,20 @@ function getLinearOperatorsSystemsFaces(n::Array{Int64},withCellsBlock::Bool)
 		P2, = getLinearInterpolationFacesUj(n,2);
 		if withCellsBlock
 			P3, = getLinearInterpolationCellCentered(n);
-			P  = blkdiag(P1,P2,P3);
+			P  = blockdiag(P1,P2,P3);
 		else
-			P  = blkdiag(P1,P2);
+			P  = blockdiag(P1,P2);
 		end
 		R1, = getRestrictionFacesFullWeightUj(n,1);
 		R2, = getRestrictionFacesFullWeightUj(n,2);
+		# R1, = getRestrictionFacesInjectionUj(n,1);
+		# R2, = getRestrictionFacesInjectionUj(n,2);
+		
 		if withCellsBlock
 			R3, = getRestrictionCellCentered(n);
-			R  = blkdiag(R1,R2,R3);
+			R  = blockdiag(R1,R2,R3);
 		else
-			R  = blkdiag(R1,R2);
+			R  = blockdiag(R1,R2);
 		end
 	else
 		(P1,nc) = getLinearInterpolationFacesUj(n,1);
@@ -52,18 +58,18 @@ function getLinearOperatorsSystemsFaces(n::Array{Int64},withCellsBlock::Bool)
 		
 		if withCellsBlock
 			P4, = getLinearInterpolationCellCentered(n);
-			P  = blkdiag(P1,P2,P3,P4);
+			P  = blockdiag(P1,P2,P3,P4);
 		else
-			P  = blkdiag(P1,P2,P3);
+			P  = blockdiag(P1,P2,P3);
 		end
 		R1, = getRestrictionFacesFullWeightUj(n,1);
 		R2, = getRestrictionFacesFullWeightUj(n,2);
 		R3, = getRestrictionFacesFullWeightUj(n,3);
 		if withCellsBlock
 			R4, = getRestrictionCellCentered(n);
-			R  = blkdiag(R1,R2,R3,R4);
+			R  = blockdiag(R1,R2,R3,R4);
 		else
-			R  = blkdiag(R1,R2,R3);
+			R  = blockdiag(R1,R2,R3);
 		end
 	end
 	return (P,R,nc);
@@ -71,14 +77,16 @@ end
 
 function get1DRestrictionCells(n::Int64)
 	## R is an 2X1 aggregation restriction.
-	if n < 16
+	if n < 8
 		return speye(n),n;
 	end
 	nc = div(n,2);
 	if 2*nc != n
 		error("Err: get1DRestrictionCells(): size should be a multiplication of 2");
 	end
-	R = 1/2*spdiagm((ones(n-1),ones(n-1)),[0,1],n-1,n);
+	#R = 1/2*spdiagm((ones(n-1),ones(n-1)),[0,1],n-1,n);
+	I,J,V = SparseArrays.spdiagm_internal(0 => fill(.5,n-1), 1 => fill(.5,n-1))
+	R = sparse(I, J, V, n-1, n);
 	R = R[1:2:n,:];
 	return R,nc;
 end
@@ -86,7 +94,7 @@ end
 function get1DNodeInjection(n_cells::Int64)
 	## R is a node injection operator - C,F,C,F,...,C
 	n = n_cells;
-	if n < 16
+	if n < 8
 		return speye(n+1),n;
 	end
 	nc = div(n,2);
@@ -102,16 +110,18 @@ function get1DNodeFullWeightRestriction(n_cells::Int64)
 	## R is a full weighting X2 restriction: 0.25 , 0.5 , 0.25 operates on nodes.
 	## B.C: Here we need to choose what happens at boundaries - we choose injection
 	n = n_cells;
-	if n < 16
+	if n < 8
 		return speye(n+1),n;
 	end
 	nc = div(n,2);
 	if 2*nc != n
 		error("Err: get1DNodeFullWeightRestriction(): size should be a multiplication of 2");
 	end
-	Qtr = 0.25*ones(n);
-	R = spdiagm((Qtr,0.5*ones(n+1),Qtr),[-1,0,1],n+1,n+1);
-    R = R[:,1:2:end]';
+	#Qtr = 0.25*ones(n);
+	#R = spdiagm((Qtr,0.5*ones(n+1),Qtr),[-1,0,1],n+1,n+1);
+	R = spdiagm(-1=>fill(.25,n), 0=>fill(.5,n+1) , 1=>fill(.25,n));
+	
+    R = sparse(R[:,1:2:end]');
 	R[1,1:2] = [0.75 0.25];
 	R[end,end-1:end] = [0.25 0.75];
 	return R,nc;
@@ -121,14 +131,15 @@ end
 function get1DProlongationCellCentered(ncells_fine::Int64)
 	## P takes a two cells [C,C] into [F,F,F,F] 
 	n = ncells_fine;
-	if n < 16
+	if n < 8
 		return speye(n),n;
 	end
 	nc = div(n,2);
 	if 2*nc != n
 		error("Err: get1DProlongationCellCentered(): size should be a multiplication of 2");
 	end
-	P  = spdiagm(((1/4)*ones(n-2),(3/4)*ones(n-1),(3/4)*ones(n),(1/4)*ones(n-1)),[-2,-1,0,1],n,n);
+	#P  = spdiagm(((1/4)*ones(n-2),(3/4)*ones(n-1),(3/4)*ones(n),(1/4)*ones(n-1)),[-2,-1,0,1],n,n);
+	P = spdiagm(-2=> fill(.25,n-2), -1=>fill(.75,n-1), 0=>fill(.75,n-1) , 1=>fill(.25,n-1));
 	P = P[:,1:2:end];
 	P[1,1:2] = [5/4,-1/4];
 	P[end,end-1:end] = [-1/4,5/4];
@@ -138,7 +149,7 @@ end
 function get1DProlongationNodes(ncells_fine::Int64)
 	## P takes a two cells [C,C] into [F,F,F,F] 
 	n = ncells_fine;
-	if n < 16
+	if n < 8
 		return speye(n+1),n;
 	end
 	nc = div(n,2);
@@ -146,7 +157,8 @@ function get1DProlongationNodes(ncells_fine::Int64)
 		error("Err: get1DProlongationNodes(): size should be a multiplication of 2");
 	end
 	Half = 0.5*ones(n);
-	P = spdiagm((Half,ones(n+1),Half),[-1,0,1],n+1,n+1);
+	#P = spdiagm((Half,ones(n+1),Half),[-1,0,1],n+1,n+1);
+	P = spdiagm(-1=>Half, 0=>ones(n+1), 1=>Half);
     P = P[:,1:2:end];
 	return P,nc;
 end
@@ -173,7 +185,7 @@ end
 
 function getRestrictionFacesInjectionUj(n::Array{Int64},j::Int64)
     # n here is number of cells.
-	R = Array(SparseMatrixCSC,length(n));
+	R = Array{SparseMatrixCSC}(length(n));
 	nc = zeros(Int64,length(n));
 	for kk = 1:length(n)
 		if kk == j
@@ -194,7 +206,7 @@ end
 
 function getRestrictionFacesFullWeightUj(n::Array{Int64},j::Int64)
     # n here is number of cells.
-	R = Array(SparseMatrixCSC,length(n));
+	R = Array{SparseMatrixCSC}(undef,length(n));
 	nc = zeros(Int64,length(n));
 	for kk = 1:length(n)
 		if kk == j
@@ -214,7 +226,7 @@ function getRestrictionFacesFullWeightUj(n::Array{Int64},j::Int64)
 end
 
 function getLinearInterpolationFacesUj(n::Array{Int64},j::Int64)
-	P = Array(SparseMatrixCSC,length(n));
+	P = Array{SparseMatrixCSC}(undef,length(n));
 	nc = zeros(Int64,length(n));
 	for kk = 1:length(n)
 		if kk == j

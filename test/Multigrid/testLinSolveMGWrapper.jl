@@ -1,8 +1,10 @@
 using jInv.Mesh
 using jInv.LinearSolvers
-using Base.Test
+using Test
 using KrylovMethods
 using Multigrid
+using LinearAlgebra
+using SparseArrays
 
 println("===  Example 2D DivSigGrad ====");
 
@@ -10,9 +12,9 @@ domain = [0.0, 1.0, 0.0, 1.0];
 n      = [50,50];
 Mr     = getRegularMesh(domain,n)
 G      = getNodalGradientMatrix(Mr);
-m      = spdiagm(exp.(randn(size(G,1))));
+m      = sparse(Diagonal(exp.(randn(size(G,1)))));
 Ar     = G'*m*G;
-Ar     = Ar + 1e-1*norm(Ar,1)*speye(size(Ar,2));
+Ar     = Ar + 1e-1*norm(Ar,1)*sparse(1.0I,size(Ar,2),size(Ar,2));
 N      = size(Ar,2); 
 B      = Ar*rand(N,4);
 
@@ -31,10 +33,10 @@ MG = getMGparam(levels,numCores,maxIter,relativeTol,relaxType,relaxParam,relaxPr
 
 sSAPCG   = getSA_AMGsolver(MG, "PCG",sym=1,out=1);
 X,  = solveLinearSystem(Ar,B,sSAPCG);
-@test vecnorm(Ar*X-B)/vecnorm(B) < sSAPCG.tol
+@test norm(Ar*X-B)/norm(B) < sSAPCG.tol
 
 clear!(sSAPCG);
 sSABiCG   = copySolver(sSAPCG);
 sSABiCG.Krylov = "BiCGSTAB"
 X,  = solveLinearSystem(Ar,B,sSABiCG);
-@test vecnorm(Ar*X-B)/vecnorm(B) < sSABiCG.tol
+@test norm(Ar*X-B)/norm(B) < sSABiCG.tol
