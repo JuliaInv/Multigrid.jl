@@ -3,7 +3,7 @@ module Multigrid
 	using SparseArrays
 	
 	hasParSpMatVec = false
-	try
+	#try
 		using ParSpMatVec;
 		global hasParSpMatVec = ParSpMatVec.isBuilt();
 		if hasParSpMatVec == false
@@ -22,9 +22,9 @@ module Multigrid
 				end
 			end
 		end
-	catch
-		println("ParSpMatVec has failed to load in try-catch!!!!!!!");
-	end
+	#catch
+	#	println("ParSpMatVec has failed to load in try-catch!!!!!!!");
+	#end
 	
 	import jInv.LinearSolvers.AbstractSolver
 	import jInv.LinearSolvers.solveLinearSystem!,jInv.LinearSolvers.solveLinearSystem, jInv.LinearSolvers.setupSolver
