@@ -7,7 +7,7 @@ module Multigrid
 		using ParSpMatVec;
 		global hasParSpMatVec = ParSpMatVec.isBuilt();
 		if hasParSpMatVec == false
-			println("hasParSpMatVec==false. it has failed to build!!!!!!!");
+			println("hasParSpMatVec==false. ParSpMatVec has failed to build!!!!!!!");
 			fname = "/home/travis/.julia/packages/ParSpMatVec/s0EHo/deps/build.log"
 			open(fname,"r") do f
 				for line in eachline(f)

@@ -45,7 +45,7 @@ uuid = "d6f4376e-aef5-505a-96c1-9c027394607a"
 
 [[ParSpMatVec]]
 deps = ["Libdl", "LinearAlgebra", "SparseArrays"]
-git-tree-sha1 = "83eabacd743e46dde01037b145bfdf57ff8d9730"
+git-tree-sha1 = "3774b81eb513a3e3feb1e9bd3abb8ae0dceb2b27"
 repo-rev = "master"
 repo-url = "https://github.com/JuliaInv/ParSpMatVec.jl"
 uuid = "ccf9b6e2-7ea7-596a-9d65-09863b18e8cc"
