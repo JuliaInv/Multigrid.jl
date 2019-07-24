@@ -7,9 +7,6 @@ import jInv.LinearSolvers.copySolver;
 #import jInvLinearSolvers.SparseCSCTypes
 #import jInvLinearSolvers.ArrayTypes
 #import jInvLinearSolvers.hasParSpMatVec
-if hasParSpMatVec
-	using ParSpMatVec
-end
 
 export MGparam;
 export getMGparam, MGsetup, clear!

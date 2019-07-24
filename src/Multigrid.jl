@@ -2,10 +2,10 @@ module Multigrid
 	using LinearAlgebra
 	using SparseArrays
 	
-	hasParSpMatVec = false
+	const hasParSpMatVec = false
 	try
 		using ParSpMatVec;
-		global hasParSpMatVec = false; #ParSpMatVec.isBuilt();
+		global hasParSpMatVec = ParSpMatVec.isBuilt();
 		if hasParSpMatVec == false
 			println("hasParSpMatVec==false. ParSpMatVec has failed to build!!!!!!!");
 		end
