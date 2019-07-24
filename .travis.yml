@@ -7,6 +7,7 @@ os:
 julia:
   - 0.7
   - 1.0
+  - 1.1
 
 notifications:
   email: false
@@ -16,7 +17,7 @@ before_install:
 #   - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
 
 script:
-  - julia --check-bounds=yes -e 'using Pkg; Pkg.build("ParSpMatVec"); Pkg.build(); Pkg.test("Multigrid";coverage=true)'
+  - julia --check-bounds=yes -e 'using Pkg; Pkg.build(); Pkg.test("Multigrid";coverage=true)'
 
 after_success:
   - julia -e 'cd(Pkg.dir("Multigrid")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())'

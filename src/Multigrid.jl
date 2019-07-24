@@ -3,21 +3,15 @@ module Multigrid
 	using SparseArrays
 	
 	hasParSpMatVec = false
-	#try
+	try
 		using ParSpMatVec;
-		global hasParSpMatVec = ParSpMatVec.isBuilt();
+		global hasParSpMatVec = false; #ParSpMatVec.isBuilt();
 		if hasParSpMatVec == false
 			println("hasParSpMatVec==false. ParSpMatVec has failed to build!!!!!!!");
-			fname = "/home/travis/.julia/packages/ParSpMatVec/s0EHo/deps/build.log"
-			open(fname,"r") do f
-				for line in eachline(f)
-					println(line)
-				end
-			end
 		end
-	#catch
-	#	println("ParSpMatVec has failed to load in try-catch!!!!!!!");
-	#end
+	catch
+		println("ParSpMatVec has failed to load in try-catch!!!!!!!");
+	end
 	
 	import jInv.LinearSolvers.AbstractSolver
 	import jInv.LinearSolvers.solveLinearSystem!,jInv.LinearSolvers.solveLinearSystem, jInv.LinearSolvers.setupSolver
