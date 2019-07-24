@@ -11,7 +11,13 @@ module Multigrid
 			fname = "/home/travis/.julia/packages/ParSpMatVec/s0EHo/deps/build.log"
 			open(fname,"r") do f
 				for line in eachline(f)
-					print(line)
+					println(line)
+				end
+			end
+			fname = "/home/travis/.julia/packages/ParSpMatVec/s0EHo/deps/builds/compileOut.txt"
+			open(fname,"r") do f
+				for line in eachline(f)
+					println(line)
 				end
 			end
 		end
