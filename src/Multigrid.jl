@@ -8,6 +8,12 @@ module Multigrid
 		global hasParSpMatVec = ParSpMatVec.isBuilt();
 		if hasParSpMatVec == false
 			println("hasParSpMatVec==false. it has failed to build!!!!!!!");
+			fname = "/home/travis/.julia/packages/ParSpMatVec/s0EHo/deps/build.log"
+			open(fname,"r") do f
+				for line in eachline(f)
+					print(line)
+				end
+			end
 		end
 	catch
 		println("ParSpMatVec has failed to load in try-catch!!!!!!!");
