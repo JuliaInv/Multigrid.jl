@@ -19,8 +19,8 @@ module Multigrid
 	SparseCSCTypes = Union{SparseMatrixCSC{ComplexF64,Int64},SparseMatrixCSC{Float64,Int64},SparseMatrixCSC{ComplexF32,Int64},SparseMatrixCSC{Float32,Int64}}
 	ArrayTypes = Union{Array{ComplexF64},Array{ComplexF32},Array{Float64},Array{Float32}}
 	
-	include("DomainDecomposition\\DomainDecomposition.jl");
-	include("Multigrid\\MGdef.jl");
+	include("DomainDecomposition/DomainDecomposition.jl");
+	include("Multigrid/MGdef.jl");
 end
 
 
