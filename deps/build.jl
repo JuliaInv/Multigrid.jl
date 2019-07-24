@@ -23,12 +23,10 @@ end
 	src2 = joinpath(srcdir,"parRelax.c");
 	outfile1 = joinpath(builddir,"Vanka.so")
 	outfile2 = joinpath(builddir,"parRelax.so")
-	@build_steps begin
-		println("gcc version")
-		run(`gcc --version`)
-		run(`gcc -O3 -fPIC -cpp -fopenmp -shared  $src1 -o $outfile1`)
-		run(`gcc -O3 -fPIC -cpp -fopenmp -shared  $src2 -o $outfile2`)
-	end
+	println("gcc version")
+	run(`gcc --version`)
+	run(`gcc -O3 -fPIC -cpp -fopenmp -shared  $src1 -o $outfile1`)
+	run(`gcc -O3 -fPIC -cpp -fopenmp -shared  $src2 -o $outfile2`)
 end
 
 @static if Sys.iswindows() 
@@ -36,12 +34,10 @@ end
 	src2 = joinpath(srcdir,"parRelax.c");
 	outfile1 = joinpath(builddir,"Vanka.dll")
 	outfile2 = joinpath(builddir,"parRelax.dll")
-	#@build_steps begin
-		println("gcc version")
-		run(`gcc --version`)
-		run(`gcc -O3 -cpp -fopenmp -shared -DBUILD_DLL  $src1 -o $outfile1`)
-		run(`gcc -O3 -cpp -fopenmp -shared -DBUILD_DLL  $src2 -o $outfile2`)
-	#end
+	println("gcc version")
+	run(`gcc --version`)
+	run(`gcc -O3 -cpp -fopenmp -shared -DBUILD_DLL  $src1 -o $outfile1`)
+	run(`gcc -O3 -cpp -fopenmp -shared -DBUILD_DLL  $src2 -o $outfile2`)
 end
 catch
 	println("Multigrid::build: Unable to build Multigrid")
