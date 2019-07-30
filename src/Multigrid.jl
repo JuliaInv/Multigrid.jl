@@ -11,8 +11,10 @@ module Multigrid
 	import jInv.LinearSolvers.AbstractSolver
 	import jInv.LinearSolvers.solveLinearSystem!,jInv.LinearSolvers.solveLinearSystem, jInv.LinearSolvers.setupSolver
 	
-	export SparseCSCTypes = Union{SparseMatrixCSC{ComplexF64,Int64},SparseMatrixCSC{Float64,Int64},SparseMatrixCSC{ComplexF32,Int64},SparseMatrixCSC{Float32,Int64}}
-	export ArrayTypes = Union{Array{ComplexF64},Array{ComplexF32},Array{Float64},Array{Float32}}
+	SparseCSCTypes = Union{SparseMatrixCSC{ComplexF64,Int64},SparseMatrixCSC{Float64,Int64},SparseMatrixCSC{ComplexF32,Int64},SparseMatrixCSC{Float32,Int64}}
+	ArrayTypes = Union{Array{ComplexF64},Array{ComplexF32},Array{Float64},Array{Float32}}
+	
+	export SparseCSCTypes,ArrayTypes
 	
 	include("DomainDecomposition/DomainDecomposition.jl");
 	include("Multigrid/MGdef.jl");
