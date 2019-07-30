@@ -16,7 +16,7 @@ export multilevelOperatorConstructor, getMultilevelOperatorConstructor
 
 include("SpMatMul.jl");
 include("FGMRES.jl");
-include("BlockFGMRES.jl");
+#include("BlockFGMRES.jl");
 
 """
 mutable struct Multigrid.multilevelOperatorConstructor
@@ -102,8 +102,8 @@ mutable struct MGparam
 	As					:: Array{SparseCSCTypes}
 	relaxPrecs
 	memCycle			:: Array{CYCLEmem}
-	memRelax			:: Union{Array{FGMRESmem},Array{BlockFGMRESmem}}
-	memKcycle			:: Union{Array{FGMRESmem},Array{BlockFGMRESmem}}
+	memRelax			:: Array{FGMRESmem} 
+	memKcycle			:: Array{FGMRESmem}
 	coarseSolveType		:: String
 	LU
 	doTranspose			:: Int64

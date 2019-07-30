@@ -74,10 +74,10 @@ solveCG_MG(Ar,MG,b1,x1,true)
 
 println("****************************** GMRES preconditioned with SA-AMG: (multiple rhs...) ******************************")
 
-# MG = getMGparam(levels,numCores,maxIter,relativeTol,"Jac-GMRES",relaxParam,relaxPre,relaxPost,'K',coarseSolveType);
-# SA_AMGsetup(Ar,MG,Float64,true,size(b,2),true);
-# x[:] .= 0.0;
-#solveGMRES_MG(Ar,MG,b,x,true,2)
+MG = getMGparam(levels,numCores,maxIter,relativeTol,"Jac-GMRES",relaxParam,relaxPre,relaxPost,'K',coarseSolveType);
+SA_AMGsetup(Ar,MG,Float64,true,size(b,2),true);
+x[:] .= 0.0;
+solveGMRES_MG(Ar,MG,b,x,true,2)
 
 Ar = 0;
 b = 0;

@@ -103,8 +103,6 @@ else
 end
 
 
-# Base.A_mul_B!(oneType,P,xc,oneType,x); # x += P*xc;
-
 x = SpMatMul(oneType,PT,xc,oneType,x,numCores); # x += PT'*xc;
 
 r[:] = b;

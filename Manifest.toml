@@ -15,11 +15,11 @@ uuid = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
 
 [[KrylovMethods]]
 deps = ["LinearAlgebra", "Printf", "SparseArrays"]
-git-tree-sha1 = "34041d0b61e452c06215504ce3edfe9855f3239e"
+git-tree-sha1 = "fb8c55d7059fbde87ee44dbe4e5c27e32b369224"
 repo-rev = "master"
 repo-url = "https://github.com/JuliaInv/KrylovMethods.jl.git"
 uuid = "9a2cd570-f05c-5dc1-9209-93ad6f5727f7"
-version = "0.5.0"
+version = "0.6.0"
 
 [[LibGit2]]
 uuid = "76f85450-5226-5b5a-8eaa-529ad045b433"
@@ -45,7 +45,7 @@ uuid = "d6f4376e-aef5-505a-96c1-9c027394607a"
 
 [[ParSpMatVec]]
 deps = ["Libdl", "LinearAlgebra", "SparseArrays"]
-git-tree-sha1 = "837144c41fe60f07f8b898d201db9b230380e5ad"
+git-tree-sha1 = "78a1c05f2d1a5ac6c178590594195031a222aaba"
 repo-rev = "master"
 repo-url = "https://github.com/JuliaInv/ParSpMatVec.jl"
 uuid = "ccf9b6e2-7ea7-596a-9d65-09863b18e8cc"
@@ -93,7 +93,7 @@ uuid = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
 
 [[jInv]]
 deps = ["Distributed", "KrylovMethods", "LinearAlgebra", "MUMPSjInv", "ParSpMatVec", "Pkg", "Printf", "SparseArrays", "Test"]
-git-tree-sha1 = "24acca099add3dc005e73923e695b08ced37a938"
+git-tree-sha1 = "28f8214e77338a9b5b7b42402d6beaf4d05a0f24"
 repo-rev = "master"
 repo-url = "https://github.com/JuliaInv/jInv.jl.git"
 uuid = "3dacf901-f8cd-5544-86ed-7a705f85c244"

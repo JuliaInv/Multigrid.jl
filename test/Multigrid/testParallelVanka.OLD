@@ -1,0 +1,32 @@
+
+using jInv.Mesh
+ArrayTypes = Union{Array{Complex128},Array{Complex64},Array{Float64},Array{Float32}};
+include("Vanka.jl");
+const libdir = "C:/Users/etrieste/Dropbox/Eran/JuliaCode/Active/Multigrid.jl/src/";
+const lib = string(libdir,"Vanka.dll");
+
+n = [100,100];
+cs_loc = 2004;
+r1 = cs2loc(cs_loc,n);
+r2 = 0*r1;
+ccall((:cs2loc,lib),Void,(Int64,Ptr{Int64},Int64,Ptr{Int64},),cs_loc,n,2,r2);
+println(norm(r1-r2))
+
+
+
+
+
+
+
+
+n = [100,100,200];
+cs_loc = 20080;
+r1 = cs2loc(cs_loc,n);
+r2 = 0*r1;
+ccall((:cs2loc,lib),Void,(Int64,Ptr{Int64},Int64,Ptr{Int64},),cs_loc,n,3,r2);
+println(norm(r1-r2))
+
+
+
+getVankaVariablesOfCell(long long *i,long long *n,long long *nf,long long *Idxs,includePressure, long long dim)
+ccall((:getVankaVariablesOfCell,lib),Void,(Ptr{Int64},Ptr{Int64},Ptr{Int64},Ptr{Int64},Int64, Int64,),);
