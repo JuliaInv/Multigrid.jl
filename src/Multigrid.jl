@@ -1,23 +1,18 @@
 module Multigrid
 	using LinearAlgebra
 	using SparseArrays
+	using ParSpMatVec;
 	
-	const hasParSpMatVec = false
-	try
-		using ParSpMatVec;
-		global hasParSpMatVec = ParSpMatVec.isBuilt();
-		if hasParSpMatVec == false
-			println("hasParSpMatVec==false. ParSpMatVec has failed to build!!!!!!!");
-		end
-	catch
-		println("ParSpMatVec has failed to load in try-catch!!!!!!!");
+	const global hasParSpMatVec = ParSpMatVec.isBuilt();
+	if hasParSpMatVec == false
+		println("hasParSpMatVec==false. ParSpMatVec has failed to build!!!!!!!");
 	end
 	
 	import jInv.LinearSolvers.AbstractSolver
 	import jInv.LinearSolvers.solveLinearSystem!,jInv.LinearSolvers.solveLinearSystem, jInv.LinearSolvers.setupSolver
 	
-	SparseCSCTypes = Union{SparseMatrixCSC{ComplexF64,Int64},SparseMatrixCSC{Float64,Int64},SparseMatrixCSC{ComplexF32,Int64},SparseMatrixCSC{Float32,Int64}}
-	ArrayTypes = Union{Array{ComplexF64},Array{ComplexF32},Array{Float64},Array{Float32}}
+	export SparseCSCTypes = Union{SparseMatrixCSC{ComplexF64,Int64},SparseMatrixCSC{Float64,Int64},SparseMatrixCSC{ComplexF32,Int64},SparseMatrixCSC{Float32,Int64}}
+	export ArrayTypes = Union{Array{ComplexF64},Array{ComplexF32},Array{Float64},Array{Float32}}
 	
 	include("DomainDecomposition/DomainDecomposition.jl");
 	include("Multigrid/MGdef.jl");
