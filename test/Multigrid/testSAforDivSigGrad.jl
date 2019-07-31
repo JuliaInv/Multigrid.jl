@@ -57,7 +57,7 @@ println("****************************** GMRES preconditioned with SA-AMG: (only 
 x[:] .= 0.0;
 b1 = vec(b[:,1]);
 x1 = zeros(N);
-MG = getMGparam(levels,numCores,maxIter,relativeTol,relaxType,relaxParam,relaxPre,relaxPost,cycleType,coarseSolveType);
+MG = getMGparam(levels,numCores,maxIter,relativeTol,relaxType,relaxParam,relaxPre,relaxPost,cycleType,"GMRES");
 SA_AMGsetup(Ar,MG,Float64,true,1,true);
 solveGMRES_MG(Ar,MG,b1,x1,true,2)
 @test norm(Ar*x1 - b1) < 0.001;
@@ -96,7 +96,7 @@ m  = exp.(randn(prod(n)));
 Ar = getNodalDivSigGradMatrix(Mr,vec(m));
 Ar = Ar + 1e-6*norm(Ar,1)*sparse(1.0I, size(Ar,2),size(Ar,2));
 
-MG = getMGparam(levels,numCores,maxIter,relativeTol,relaxType,relaxParam,relaxPre,relaxPost,cycleType,coarseSolveType);
+MG = getMGparam(levels,numCores,maxIter,relativeTol,relaxType,relaxParam,relaxPre,relaxPost,cycleType,"Julia");
 
 N = size(Ar,2);
 b = Ar*rand(N,3);
@@ -114,7 +114,7 @@ solveCG_MG(Ar,MG,b,x,true)
 
 x = zeros(N,3);
 println("Stand-alone Classical AMG:")
-MG = getMGparam(levels,numCores,maxIter,relativeTol,relaxType,relaxParam,relaxPre,relaxPost,cycleType,coarseSolveType);
+MG = getMGparam(levels,numCores,maxIter,relativeTol,relaxType,relaxParam,relaxPre,relaxPost,cycleType,"GMRES");
 ClassicalAMGsetup(Ar,MG,Float64,true,size(b,2),true);
 solveMG(MG,b,x,true);
 @test norm(Ar*x - b) < 0.005;

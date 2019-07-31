@@ -81,7 +81,7 @@ else
     if param.cycleType == 'K'
 		yzK = param.memKcycle[level].v_prec;
 		AfunK = getAfun(Ac,param.memKcycle[level].Az,numCores);
-		MMG(x) = (yzK[:] = 0.0; recursiveCycle(param,x,yzK,level+1)); # x does not change...
+		MMG(x) = (yzK[:] .= 0.0; recursiveCycle(param,x,yzK,level+1)); # x does not change...
 		if nrhs==1
 			xc = FGMRES_relaxation(AfunK,bc,xc,2,MMG,gmresTol,false,true,numCores,param.memKcycle[level])[1];
 			# xc = FGMRES(AfunK,bc,xc,2,MMG,gmresTol,false,true,numCores,param.memKcycle[level])[1];
@@ -184,11 +184,11 @@ elseif param.coarseSolveType == "GMRES"
 	M2(xx::ArrayTypes) = (SpMatMul(D,xx,y,param.numCores);return y;);
 	if size(b,2)==1
 		b = vec(b);
-		# x, flag,rnorm,iter = KrylovMethods.gmres(Afun,b,40,tol = tol,maxIter = maxIter,M = M2,out=out);
-		x[:] = 0.0;
-		(x,) = FGMRES(Afun,b,x,10,M2,tol,false,false,param.numCores);
+		x[:] .= 0.0;
+		x, flag,rnorm,iter = KrylovMethods.fgmres(Afun,b,10,tol = tol,maxIter = 1,M = M2,out=out,x=x);
 	else
-		error("Multiple RHS not supported");
+		x[:] .= 0.0;
+		x, flag,rnorm,iter = KrylovMethods.blockFGMRES(Afun,b,10,tol = tol,maxIter = 1,M = M2,out=out,X=x);
 	end
 elseif param.coarseSolveType == "VankaFaces"
 	AT = param.As[end];
