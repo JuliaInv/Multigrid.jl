@@ -56,7 +56,6 @@ if param.relaxType=="Jac-GMRES"
 		for ii = 1:nrhs
 			x[:,ii] = FGMRES_relaxation(Afun,r[:,ii],x[:,ii],npresmth,MM,gmresTol,false,true,numCores,param.memRelax[level])[1];
 		end
-		# x = BlockFGMRES(Afun,r,x,npresmth,MM,gmresTol,false,false,numCores, param.memRelax[level])[1];
 		# x = BlockFGMRES_relaxation(AT,r,x,npresmth,MM,gmresTol,false,false,numCores, param.memRelax[level])[1];
 	end
 elseif param.relaxType == "VankaFaces"
@@ -88,7 +87,7 @@ else
 			# xc = FGMRES(AfunK,bc,xc,2,MMG,gmresTol,false,true,numCores,param.memKcycle[level])[1];
 		else
 			# xc = BlockFGMRES_relaxation(Ac,bc,xc,2,MMG,gmresTol,false,true,numCores,param.memKcycle[level+1])[1];
-			xc = BlockFGMRES(AfunK,bc,xc,2,MMG,gmresTol,false,true,numCores,param.memKcycle[level])[1];
+			xc, = KrylovMethods.blockFGMRES(AfunK,bc,2,tol = gmresTol,maxIter = 1,M = MMG, X = xc,flexible=true,out=-1);
 		end
     else
 		xc = recursiveCycle(param,bc,xc,level+1);# xc changes, bc does not change
@@ -116,7 +115,6 @@ if param.relaxType=="Jac-GMRES"
 		for ii=1:nrhs
 			x[:,ii] = FGMRES_relaxation(Afun,r[:,ii],x[:,ii],npostsmth,MM,gmresTol,false,true,numCores,param.memRelax[level])[1];
 		end
-		# x = BlockFGMRES(Afun,r,x,npostsmth,MM,gmresTol,false,false,numCores, param.memRelax[level])[1];
 		# x = BlockFGMRES_relaxation(AT,r,x,npostsmth,MM,gmresTol,false,false,numCores, param.memRelax[level])[1];
 	end
 elseif param.relaxType == "VankaFaces"

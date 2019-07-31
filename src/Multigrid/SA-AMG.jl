@@ -79,7 +79,7 @@ return;
 end
 
 function getAggregation(AT::SparseMatrixCSC,strengthConnParam::Float64)
-	if size(AT,2) <= 1000
+	if size(AT,2) <= 100
 		return sparse(1.0I,size(AT,2),size(AT,2));
 	end
 	S = getStrengthMatrix(AT,strengthConnParam);
