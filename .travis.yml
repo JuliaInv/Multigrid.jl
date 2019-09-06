@@ -5,14 +5,13 @@ os:
   - linux
 
 julia:
-  - 0.7
+  - 1.0
+  - 1.1
 
 notifications:
   email: false
 
 before_install:
-#   - julia -e 'Pkg.clone("https://github.com/JuliaInv/jInv.jl","jInv"); Pkg.build("jInv");'
-#   - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
 
 script:
   - julia --check-bounds=yes -e 'using Pkg; Pkg.build(); Pkg.test("Multigrid";coverage=true)'

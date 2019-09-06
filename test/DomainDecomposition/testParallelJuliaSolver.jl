@@ -1,7 +1,7 @@
 using jInv.Mesh
 using jInv.LinearSolvers
 using DomainDecomposition
-using Base.Test
+using Test
 
 println("===  Test Julia wrapper with symmetric (real) matrix ====");
 domain = [0.0, 1.0, 0.0, 1.0];
