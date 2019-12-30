@@ -1,6 +1,5 @@
 [![Build Status](https://travis-ci.org/JuliaInv/Multigrid.jl.svg?branch=master)](https://travis-ci.org/JuliaInv/Multigrid.jl)
 [![Coverage Status](https://coveralls.io/repos/github/JuliaInv/Multigrid.jl/badge.svg?branch=master)](https://coveralls.io/github/JuliaInv/Multigrid.jl?branch=master)
-[![Build status](https://ci.appveyor.com/api/projects/status/itta987m129uroku?svg=true)](https://ci.appveyor.com/project/lruthotto/multigrid-jl)
 
 # Multigrid.jl
 
