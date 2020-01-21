@@ -1,0 +1,49 @@
+
+#function getOps(LU::parallelJuliaSolver)
+#	return (LU.L,LU.U,LU.p,LU.q);
+#end
+
+
+# LU = getCompressedLUfactor(L,U, convert(Array{UInt32},p),convert(Array{UInt32},q));
+
+# function getCompressedLUfactor(L,U, p,q)
+	# return LUfactor(L,U,p,q);
+# end
+# type LUfactor
+	# Lnzval::Array{UInt8}
+	# Lrowval::Array{UInt8}
+	# Lcolptr::Array{UInt8}
+	# Unzval::Array{UInt8}
+	# Urowval::Array{UInt8}
+	# Ucolptr::Array{UInt8}
+	# pcomp::Array{UInt8}
+	# qcomp::Array{UInt8}
+# end
+
+# using Blosc;
+# function getCompressedLUfactor(L,U, p,q)
+	# Blosc.set_num_threads(4);
+	# Lnzval = compress(L.nzval, level=9, shuffle=true, itemsize=sizeof(Complex32));
+	# println(length(Lnzval) / (4*length(L.nzval)))
+	# Lrowval = compress(L.rowval, level=9, shuffle=true, itemsize=sizeof(UInt32));
+	# println(length(Lrowval) / (4*length(L.rowval)))
+	# Lcolptr = compress(L.colptr, level=9, shuffle=true, itemsize=sizeof(UInt32));
+	# println(length(Lcolptr) / (4*length(L.colptr)))
+	# Unzval = compress(U.nzval, level=9, shuffle=true, itemsize=sizeof(Complex32));
+	# Urowval = compress(U.rowval, level=9, shuffle=true, itemsize=sizeof(UInt32));
+	# Ucolptr = compress(U.colptr, level=9, shuffle=true, itemsize=sizeof(UInt32));
+	# pcomp = compress(p, level=9, shuffle=true, itemsize=sizeof(UInt32));
+	# println(length(pcomp) / (4*length(p)))
+	# qcomp = compress(q, level=9, shuffle=true, itemsize=sizeof(UInt32));
+	# error("ET")
+	# return LUfactor(Lnzval,Lrowval,Lcolptr,Unzval,Urowval,Ucolptr,pcomp,qcomp);
+# end
+
+# function getOps(LU::LUfactor)
+	# Blosc.set_num_threads(4);
+	# p = decompress(UInt32, LU.pcomp);
+	# q = decompress(UInt32, LU.qcomp);
+	# L = SparseMatrixCSC(length(p),length(p),decompress(UInt32, LU.Lcolptr),decompress(UInt32, LU.Lrowval),decompress(Complex32, LU.Lnzval));
+	# U = SparseMatrixCSC(length(p),length(p),decompress(UInt32, LU.Ucolptr),decompress(UInt32, LU.Urowval),decompress(Complex32, LU.Unzval));
+	# return (L,U,p,q);
+# end

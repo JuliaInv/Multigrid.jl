@@ -1,4 +1,4 @@
-@testset "Multigrid" begin
+@testset "Multigrid.Multigrid" begin
     @testset "testSAforDivSigGrad.jl" begin
        include("testSAforDivSigGrad.jl")
     end
@@ -14,4 +14,8 @@
 	@testset "testGMGRAPforElasticity.jl" begin
        include("testGMGRAPforElasticity.jl")
     end
+	# @testset "testHybridKaczmarz.jl" begin
+       # include("testHybridKaczmarz.jl")
+    # end
+	
 end

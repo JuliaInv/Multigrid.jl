@@ -15,7 +15,7 @@ module Multigrid
 	ArrayTypes = Union{Array{ComplexF64},Array{ComplexF32},Array{Float64},Array{Float32}}
 	
 	export SparseCSCTypes,ArrayTypes
-	
+	include("ParallelJuliaSolver/parallelJuliaSolver.jl");
 	include("DomainDecomposition/DomainDecomposition.jl");
 	include("Multigrid/MGdef.jl");
 end

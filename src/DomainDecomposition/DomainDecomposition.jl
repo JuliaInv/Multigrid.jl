@@ -42,7 +42,6 @@ end
 
 include("DDSerial.jl");
 include("DDIndices.jl");
-include("parallelJuliaSolver.jl");
 include("DDService.jl")
 
 
@@ -78,8 +77,6 @@ function solveLinearSystem!(At,B,X,param::DomainDecompositionParam,doTranspose=0
 		setupDDSerial(At,param);
 	end 
 
-	
-	
 	if !isempty(B)
 		if issparse(B)
 			B = full(B);
