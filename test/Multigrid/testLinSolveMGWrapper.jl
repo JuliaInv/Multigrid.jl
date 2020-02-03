@@ -29,7 +29,7 @@ relaxPost   = 2;
 cycleType   ='V';
 coarseSolveType = "Julia";
 
-MG = getMGparam(levels,numCores,maxIter,relativeTol,relaxType,relaxParam,relaxPre,relaxPost,cycleType,coarseSolveType);
+MG = getMGparam(Float64,Int64,levels,numCores,maxIter,relativeTol,relaxType,relaxParam,relaxPre,relaxPost,cycleType,coarseSolveType);
 
 sSAPCG   = getSA_AMGsolver(MG, "PCG",sym=1,out=1);
 X,  = solveLinearSystem(Ar,B,sSAPCG);

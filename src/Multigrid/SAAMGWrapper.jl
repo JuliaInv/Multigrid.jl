@@ -3,8 +3,8 @@ export solveLinearSystem!,clear!,copySolver
 
 ## this is a wrapper for using the SA AMG preconditioner using the abstractSolver interface. 
 
-mutable struct SA_AMGsolver <: AbstractSolver
-	MG				:: MGparam
+mutable struct SA_AMGsolver{VAL,IND} <: AbstractSolver 
+	MG				:: MGparam{VAL,IND}
 	Krylov			:: String
 	sym				:: Int64  #0=unsymmetric, 1=symm. pos def, 2=general symmetric
 	out				:: Int64
@@ -18,15 +18,15 @@ mutable struct SA_AMGsolver <: AbstractSolver
 end
 
 
-function getSA_AMGsolver(MG::MGparam,Krylov::String="BiCGSTAB"; sym::Int64=1, out::Int64 =-1)
+function getSA_AMGsolver(MG::MGparam{VAL,IND},Krylov::String="BiCGSTAB"; sym::Int64=1, out::Int64 =-1) where {VAL,IND}
 	if sym!=1
 		warning("Non-symmetric AMG version is not implemented yet...")
 	end
-	return SA_AMGsolver(MG,Krylov,sym,out,false,0,MG.relativeTol,0,0.0,0.0);
+	return SA_AMGsolver{VAL,IND}(MG,Krylov,sym,out,false,0,MG.relativeTol,0,0.0,0.0);
 end
 
 import Multigrid.solveLinearSystem!;
-function solveLinearSystem!(A,B,X,param::SA_AMGsolver,doTranspose=0)
+function solveLinearSystem!(A,B::Array{VAL},X::Array{VAL},param::SA_AMGsolver{VAL,IND},doTranspose=0) where {VAL,IND}
 	if issparse(B)
 		B = full(B);
 	end
@@ -40,7 +40,6 @@ function solveLinearSystem!(A,B,X,param::SA_AMGsolver,doTranspose=0)
 		X[:] = 0.0;
 		return X, param;
 	end
-	TYPE = eltype(B);
 	n = size(B,1)
 	nrhs = size(B,2);
 
@@ -55,9 +54,9 @@ function solveLinearSystem!(A,B,X,param::SA_AMGsolver,doTranspose=0)
 		if (param.sym==1) ||  ((param.sym != 1) && (doTransposeIterative == 1)) 
 			# this means that we're OK with using Ac_mul_B! in iterative methods, hence, MG is also OK.
 		elseif (param.sym != 1) && (doTransposeIterative == 0)
-			A = A';
+			A = sparse(A');
 		end
-		param.timeSetup += @elapsed SA_AMGsetup(A,param.MG,TYPE,param.sym==1,nrhs,verbose);
+		param.timeSetup += @elapsed SA_AMGsetup(A,param.MG,param.sym==1,nrhs,verbose);
 		param.MG.doTranspose = doTranspose; # the doTranspose of MG MUST be synced with the doTranspose of the interface.
 	end 
 	
@@ -65,7 +64,7 @@ function solveLinearSystem!(A,B,X,param::SA_AMGsolver,doTranspose=0)
 		param.timeSetup += @elapsed transposeHierarchy(param.MG);
 	end
 	BLAS.set_num_threads(param.MG.numCores);
-	Afun = getAfun(param.MG.As[1],zeros(TYPE,size(B)),param.MG.numCores);
+	Afun = getAfun(param.MG.As[1],zeros(VAL,size(B)),param.MG.numCores);
 	time = time_ns();
 	if param.Krylov=="BiCGSTAB"
 		X, param.MG,num_iter = solveBiCGSTAB_MG(Afun,param.MG,B,X,verbose);

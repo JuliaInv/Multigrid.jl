@@ -24,12 +24,12 @@ cycleType   ='V';
 coarseSolveType = "Julia";
 transferOperatorType = "SystemsFacesLinear";
 
-MG = getMGparam(levels,numCores,maxIter,relativeTol,relaxType,relaxParam,relaxPre,relaxPost,cycleType,coarseSolveType,0.5,0.0,transferOperatorType);
+MG = getMGparam(Float64,Int64,levels,numCores,maxIter,relativeTol,relaxType,relaxParam,relaxPre,relaxPost,cycleType,coarseSolveType,0.5,0.0,transferOperatorType);
 
 N = size(Ar,2);
 b = Ar*rand(N,2); b = b/norm(b);
 x = zeros(N,2);
-MGsetup(Ar,Mr,MG,Float64,size(b,2),true);
+MGsetup(Ar,Mr,MG,size(b,2),true);
 println("****************************** Stand-alone GMG RAP: ******************************")
 solveMG(MG,b,x,true);
 @test norm(Ar*x - b) < 0.05;
@@ -53,7 +53,7 @@ N = size(Ar,2);
 b = Ar*rand(N,2); b = b/norm(b);
 x = zeros(N,2);
 clear!(MG)
-MGsetup(Ar,Mr,MG,Float64,size(b,2),true);
+MGsetup(Ar,Mr,MG,size(b,2),true);
 println("****************************** Stand-alone GMG RAP: ******************************")
 solveMG(MG,b,x,true);
 @test norm(Ar*x - b) < 0.05;

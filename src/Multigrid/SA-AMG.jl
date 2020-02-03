@@ -5,10 +5,10 @@ Based on the paper
 Eran Treister and Irad Yavneh, Non-Galerkin Multigrid based on Sparsified Smoothed Aggregation. 
 SIAM Journal on Scientific Computing, 37 (1), A30-A54, 2015.
 """
-function SA_AMGsetup(AT::SparseMatrixCSC,param::MGparam,rhsType::DataType = Float64,symm::Bool = true,nrhs::Int64 = 1,verbose::Bool=false)
-Ps = Array{SparseMatrixCSC}(undef,param.levels-1);
-Rs = Array{SparseMatrixCSC}(undef,param.levels-1);
-As = Array{SparseMatrixCSC}(undef,param.levels);
+function SA_AMGsetup(AT::SparseMatrixCSC{VAL,IND},param::MGparam{VAL,IND},symm::Bool = true,nrhs::Int64 = 1,verbose::Bool=false) where {VAL,IND}
+Ps = Array{SparseMatrixCSC{real(VAL),IND}}(undef,param.levels-1);
+Rs = Array{SparseMatrixCSC{real(VAL),IND}}(undef,param.levels-1);
+As = Array{SparseMatrixCSC{VAL,IND}}(undef,param.levels);
 
 if symm == false
 	error("not supported yet...");
@@ -17,7 +17,7 @@ end
 T_time = 0;	
 N = size(AT,2);
 As[1] = AT;
-relaxPrecs = Array{SparseMatrixCSC}(undef,param.levels-1);
+relaxPrecs = Array{SparseMatrixCSC{VAL,IND}}(undef,param.levels-1);
 Cop = nnz(AT);
 for l = 1:(param.levels-1)
 	if verbose
@@ -74,7 +74,7 @@ param.As = As;
 param.Ps = Ps;
 param.Rs = Rs;
 param.relaxPrecs = relaxPrecs;
-param = adjustMemoryForNumRHS(param,rhsType,nrhs,verbose);
+param = adjustMemoryForNumRHS(param,nrhs,verbose);
 return;
 end
 

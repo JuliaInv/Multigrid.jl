@@ -1,11 +1,7 @@
-function recursiveCycle(param::MGparam,b::ArrayTypes,x::ArrayTypes,level::Int64)
+function recursiveCycle(param::MGparam{VAL,IND},b::Array{VAL},x::Array{VAL},level::Int64) where {VAL,IND}
 
 # println(string("Starting level ", level));
 
-TYPE = getMGType(param,b);
-if eltype(x)!=TYPE
-	error("Should not be this way.");
-end
 gmresTol = 1e-5;
 
 n = size(b,1);
@@ -25,8 +21,8 @@ Ps = param.Ps;
 Rs = param.Rs;
 AT = As[level];
 
-oneType = one(TYPE);
-zeroType = zero(TYPE);
+oneType = one(VAL);
+zeroType = zero(VAL);
 r = param.memCycle[level].r;
 
 r[:] = b;
@@ -38,7 +34,7 @@ MM = identity;
 Afun = identity;
 if param.relaxType=="Jac-GMRES"
 	y = param.memRelax[level].v_prec;
-	MM(xx::ArrayTypes) = (SpMatMul(D,xx,y,numCores);return y;);
+	MM(xx::Array{VAL}) = (SpMatMul(D,xx,y,numCores);return y;);
 end
 
 PT = Ps[level];
@@ -128,7 +124,7 @@ end
 
 
 
-function relax(AT::SparseMatrixCSC,r::ArrayTypes,x::ArrayTypes,b::ArrayTypes,D::SparseMatrixCSC,numit::Int64,numCores::Int64)
+function relax(AT::SparseMatrixCSC{VAL,IND},r::Array{VAL},x::Array{VAL},b::Array{VAL},D::SparseMatrixCSC{VAL,IND},numit::Int64,numCores::Int64) where {VAL,IND}
 # x is actually the output... x and is being changed in the iterations.
 # r does not end up accurate becasue we do not update it in the last iteration.
 oneType = one(eltype(r));
@@ -145,15 +141,13 @@ return x
 end
 
 
-function solveCoarsest(param::MGparam,b::ArrayTypes,x::ArrayTypes,doTranspose::Int64=0)
+function solveCoarsest(param::MGparam{VAL,IND},b::Array{VAL},x::Array{VAL},doTranspose::Int64=0) where {VAL,IND}
 
 # if isa(param.LU,AbstractSolver)
 	# AT = param.As[end];
 	# (x,param.LU) = solveLinearSystem!(AT,b,x,param.LU);
 	# return x;
 # end
-
-
 
 if param.coarseSolveType == "MUMPS"
 	applyMUMPS(param.LU,b,xt,param.doTranspose);

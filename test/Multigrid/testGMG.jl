@@ -32,7 +32,7 @@ relaxPost   = 1;
 cycleType   ='V';
 coarseSolveType = "NoMUMPS";
 
-MG = getMGparam(levels,numCores,maxIter,relativeTol,relaxType,relaxParam,
+MG = getMGparam(Float64,Int64,levels,numCores,maxIter,relativeTol,relaxType,relaxParam,
 				relaxPre,relaxPost,cycleType,coarseSolveType,0.5,0.0)
 
 ## TEST DIRICHLET
@@ -40,8 +40,8 @@ MG = getMGparam(levels,numCores,maxIter,relativeTol,relaxType,relaxParam,
 # s = zeros(tuple(Minv.n+1...));
 # s[2:end-1,2:end-1] = rand(tuple(Minv.n-1...));
 # s = s[:];
-# MGsetup(getNodalLaplacianMatrixDirichlet,Minv,MG,Float64,1,true)
-# MGsetup(L,Minv,MG,Float64,1,true)
+# MGsetup(getNodalLaplacianMatrixDirichlet,Minv,MG,1,true)
+# MGsetup(L,Minv,MG,1,true)
 
 ## TEST NEUMANN
 L = getNodalLaplacianMatrix(Minv);
@@ -49,7 +49,7 @@ s = rand(prod(Minv.n.+1));
 b = L*s;b = b/norm(b);
 x0 = 0.0*s;
 
-MGsetup(getMultilevelOperatorConstructor([],getNodalLaplacianMatrix,[]),Minv,MG,Float64,1,true);
+MGsetup(getMultilevelOperatorConstructor([],getNodalLaplacianMatrix,[]),Minv,MG,1,true);
 solveMG(MG,b,x0,true);
 @test norm(L*x0 - b) < 0.005;
 xn = getCellCenteredGrid(Minv);
@@ -61,14 +61,14 @@ sig = sig[:];
 
 Ar = getNodalDivSigGradMatrix(Minv,sig);
 b = Ar*s;b = b/norm(b)
-MGsetup(Ar,Minv,MG,Float64,1,true);
+MGsetup(Ar,Minv,MG,1,true);
 x0 = 0.0*s;
 solveMG(MG,b,x0,true);
 @test norm(Ar*x0 - b) < 0.005;
 
 
 restrictSigma(mesh_fine,mesh_coarse,param_fine,level) = restrictCellCenteredVariables(param_fine,mesh_fine.n);
-MGsetup(getMultilevelOperatorConstructor(sig,getNodalDivSigGradMatrix,restrictSigma),Minv,MG,Float64,1,true);
+MGsetup(getMultilevelOperatorConstructor(sig,getNodalDivSigGradMatrix,restrictSigma),Minv,MG,1,true);
 x0 = 0.0*s;
 solveMG(MG,b,x0,true);
 @test norm(Ar*x0 - b) < 0.005;

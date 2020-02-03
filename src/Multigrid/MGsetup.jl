@@ -5,14 +5,14 @@ export restrictCellCenteredVariables,restrictNodalVariables2;
 const spIndType = Int64
 export spIndType;
 
-function MGsetup(ATf::Union{SparseMatrixCSC,multilevelOperatorConstructor},Mesh::RegularMesh,param::MGparam,rhsType::DataType = Float64,nrhs::Int64 = 1,verbose::Bool=false)
+function MGsetup(ATf::Union{SparseMatrixCSC,multilevelOperatorConstructor},Mesh::RegularMesh,param::MGparam{VAL,IND},nrhs::Int64 = 1,verbose::Bool=false) where {VAL,IND}
 Ps      	= Array{SparseMatrixCSC}(undef,param.levels-1);
 Rs      	= Array{SparseMatrixCSC}(undef,param.levels-1);
 As 			= Array{SparseMatrixCSC}(undef,param.levels);
 Meshes  	= Array{RegularMesh}(undef,param.levels); 
 relaxPrecs 	= Array{Any}(undef,param.levels);
 
-MGType = getMGType(param,rhsType);
+#MGType = getMGType(param,rhsType);
 
 
 PDEparam = 0;
@@ -65,7 +65,7 @@ for l = 1:(param.levels-1)
 		d = param.relaxParam./diag(AT);
 		d = sparse(Diagonal(d));
 		if param.singlePrecision
-			relaxPrecs[l] = convert(SparseMatrixCSC{MGType,spIndType},d);# here we need to take the conjugate for the SpMatVec, but we give At instead of A so it cancels
+			relaxPrecs[l] = convert(SparseMatrixCSC{VAL,IND},d);# here we need to take the conjugate for the SpMatVec, but we give At instead of A so it cancels
 		else
 			relaxPrecs[l] = d;
 		end
@@ -78,8 +78,8 @@ for l = 1:(param.levels-1)
 		error("Unknown relaxation type !!!!");
 	end
 	if param.singlePrecision
-		PT = convert(SparseMatrixCSC{real(MGType),spIndType},PT);
-		RT = convert(SparseMatrixCSC{real(MGType),spIndType},RT);
+		PT = convert(SparseMatrixCSC{real(VAL),IND},PT);
+		RT = convert(SparseMatrixCSC{real(VAL),IND},RT);
 	end
 
 	if (size(PT,1)==size(PT,2))
@@ -129,12 +129,12 @@ end
 param.Ps = Ps;
 param.Rs = Rs;
 param.relaxPrecs = relaxPrecs;
-param = adjustMemoryForNumRHS(param,MGType,nrhs,verbose);
+param = adjustMemoryForNumRHS(param,nrhs,verbose);
 param.doTranspose = 0;
 return param;
 end
 
-function adjustMemoryForNumRHS(param::MGparam,MGType::DataType = Float64,nrhs::Int64 = 1,verbose::Bool=false)
+function adjustMemoryForNumRHS(param::MGparam{VAL,IND},nrhs::Int64 = 1,verbose::Bool=false) where {VAL,IND}
 if length(param.As)==0
 	error("The Hierarchy is empty - run a setup first.")
 end
@@ -159,52 +159,47 @@ if good
 end
 
 if param.cycleType == 'K'
-	memKcycle = Array{FGMRESmem}(undef,max(param.levels-2,0)); 
+	memKcycle = Array{FGMRESmem{VAL}}(undef,max(param.levels-2,0)); 
 else
-	memKcycle = Array{FGMRESmem}(undef, 0);
+	memKcycle = Array{FGMRESmem{VAL}}(undef, 0);
 end
 
 if param.relaxType == "Jac-GMRES"
-	memRelax = Array{FGMRESmem}(undef,param.levels-1); 
+	memRelax = Array{FGMRESmem{VAL}}(undef,param.levels-1); 
 else
-	memRelax = Array{FGMRESmem}(undef,0);
+	memRelax = Array{FGMRESmem{VAL}}(undef,0);
 end
 
-memCycle = Array{CYCLEmem}(undef,param.levels);
-
-param.memRelax  = memRelax;
-param.memKcycle = memKcycle;
-param.memCycle  = memCycle;
+memCycle = Array{CYCLEmem{VAL}}(undef,param.levels);
 
 N = size(param.As[1],2); 
-
 for l = 1:(param.levels-1)
 	N = size(param.As[l],2);
 	needZ = param.relaxType=="Jac-GMRES";
 	# In principle, no need for b on the first level.
-	memCycle[l] = getCYCLEmem(N,nrhs,MGType,true);
+	memCycle[l] = getCYCLEmem(N,nrhs,VAL,true);
 	if param.relaxType=="Jac-GMRES"
 		maxRelax = max(param.relaxPre(l),param.relaxPost(l));
 		if nrhs == 1
-			memRelax[l] = getFGMRESmem(N,true,MGType,maxRelax,1);
+			memRelax[l] = getFGMRESmem(N,true,VAL,maxRelax,1);
 		else
-			# memRelax[l] = getBlockFGMRESmem(N,nrhs,false,MGType,maxRelax);
-			# memRelax[l] = getFGMRESmem(N,false,MGType,maxRelax,nrhs);
-			memRelax[l] = getFGMRESmem(N,true,MGType,maxRelax,1);
+			# memRelax[l] = getBlockFGMRESmem(N,nrhs,false,VAL,maxRelax);
+			# memRelax[l] = getFGMRESmem(N,false,VAL,maxRelax,nrhs);
+			memRelax[l] = getFGMRESmem(N,true,VAL,maxRelax,1);
 		end
 	end
 	
 	if l > 1 && param.cycleType=='K'
 		if nrhs == 1
-			memKcycle[l-1] = getFGMRESmem(N,true,MGType,2,1);
+			memKcycle[l-1] = getFGMRESmem(N,true,VAL,2,1);
 		else
 			# memKcycle[l-1] = getBlockFGMRESmem(N,nrhs,true,MGType,2);
-			memKcycle[l-1] = getFGMRESmem(N,true,MGType,2,nrhs);
+			memKcycle[l-1] = getFGMRESmem(N,true,VAL,2,nrhs);
 		end
 		
 	end
 end
-memCycle[end] = getCYCLEmem(size(param.As[end],2),nrhs,MGType,false); # no need for residual on the coarsest level...
+memCycle[end] = getCYCLEmem(size(param.As[end],2),nrhs,VAL,false); # no need for residual on the coarsest level...
 memCycle[end].b = memCycle[end].r;
 param.memRelax = memRelax;
 param.memKcycle = memKcycle;
@@ -213,9 +208,8 @@ return param;
 end
 
 
-function replaceMatrixInHierarchy(param,AT::SparseMatrixCSC,verbose::Bool=false)
-MGType = getMGType(param,eltype(AT));
-param.As[1] = convert(SparseMatrixCSC{MGType,spIndType},AT);
+function replaceMatrixInHierarchy(param::MGparam{VAL,IND},AT::SparseMatrixCSC{VAL,IND},verbose::Bool=false) where {VAL,IND}
+param.As[1] = convert(SparseMatrixCSC{VAL,IND},AT);
 Cop = nnz(AT);
 T_time = 0;	
 for l = 1:(param.levels-1)
@@ -229,7 +223,7 @@ for l = 1:(param.levels-1)
 		d = spdiagm(d);
 		param.relaxPrecs[l] = d;
 		if param.singlePrecision
-			param.relaxPrecs[l] = convert(SparseMatrixCSC{MGType,spIndType},d);# here we need to take the conjugate for the SpMatVec, but we give At instead of A so it cancels
+			param.relaxPrecs[l] = convert(SparseMatrixCSC{VAL,IND},d);# here we need to take the conjugate for the SpMatVec, but we give At instead of A so it cancels
 		end
 		
 	elseif param.relaxType=="SPAI"

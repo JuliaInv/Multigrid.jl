@@ -1,14 +1,14 @@
 export solveMG,solveGMRES_MG,solveBiCGSTAB_MG,solveCG_MG,getAfun
 
-function solveMG(param::MGparam,b::ArrayTypes,x::ArrayTypes,verbose::Bool)
-MGType = getMGType(param,b);
+function solveMG(param::MGparam{VAL,IND},b::Array{VAL},x::Array{VAL},verbose::Bool) where {VAL,IND}
+#MGType = getMGType(param,b);
 
 
-param = adjustMemoryForNumRHS(param,MGType,size(b,2));
+param = adjustMemoryForNumRHS(param,size(b,2));
 tol = param.relativeTol;
 numCores = param.numCores;
-oneType = one(MGType);
-zeroType = zero(MGType);
+oneType = one(VAL);
+zeroType = zero(VAL);
 maxIter = param.maxOuterIter;
 A = param.As[1];
 r = param.memCycle[1].r;
@@ -41,22 +41,21 @@ end
 ####################################################################################################################
 # this function checks if the memory allocated in param fits the nrhs and generates a function for applying the cycle.
 # Also - it checks if the hierarchy needs to be transposed or not.
-function getMultigridPreconditioner(param::MGparam,B::ArrayTypes,verbose::Bool=false)
-	MGType = getMGType(param,B);
+function getMultigridPreconditioner(param::MGparam{VAL,IND},B::Array,verbose::Bool=false) where {VAL,IND}
 	n = size(B,1)
 	nrhs = size(B,2);
 	if hierarchyExists(param)==false
 		println("You have to do a setup first.")
 	end
-	param = adjustMemoryForNumRHS(param,MGType,nrhs);
+	param = adjustMemoryForNumRHS(param,nrhs);
 	z = param.memCycle[1].x;
 	
-	mixed_precision = MGType!=eltype(B);
+	mixed_precision = VAL!=eltype(B);
 	MMG = identity;
 	if mixed_precision
 		bl =  param.memCycle[1].b;
 		z2 = zeros(eltype(B),size(B));
-		MMG = (b) -> (z[:] .= 0.0;bl[:]=b; recursiveCycle(param,bl,z,1); z2[:] = z; return z2;);
+		MMG = (b) -> (z[:] .= 0.0;bl[:] .= b; recursiveCycle(param,bl,z,1); z2[:] .= z; return z2;);
 	else
 		MMG = (b) -> (z[:] .= 0.0;recursiveCycle(param,b,z,1); return z);
 	end
@@ -64,8 +63,8 @@ function getMultigridPreconditioner(param::MGparam,B::ArrayTypes,verbose::Bool=f
 	return MMG;
 end
 
-function getAfun(AT::SparseMatrixCSC,Az::ArrayTypes,numCores::Int64)
-	function Afun(z::ArrayTypes)
+function getAfun(AT::SparseMatrixCSC{VAL,IND},Az::Array{VAL},numCores::Int64) where {VAL,IND}
+	function Afun(z::Array{VAL})
 		SpMatMul(AT,z,Az,numCores);
 		return Az;
 	end
@@ -73,18 +72,18 @@ function getAfun(AT::SparseMatrixCSC,Az::ArrayTypes,numCores::Int64)
 end
 
 
-function solveBiCGSTAB_MG(AT::SparseCSCTypes,param::MGparam,b::ArrayTypes,x0::ArrayTypes,verbose::Bool = false)
+function solveBiCGSTAB_MG(AT::SparseMatrixCSC,param::MGparam{VAL,IND},b::Array,x0::Array,verbose::Bool = false) where {VAL,IND}
 	return solveBiCGSTAB_MG(getAfun(AT,zeros(eltype(b),size(b)),param.numCores),param,b,x0,verbose);
 end
-function solveCG_MG(AT::SparseCSCTypes,param::MGparam,b::ArrayTypes,x0::ArrayTypes,verbose::Bool = false) 
+function solveCG_MG(AT::SparseMatrixCSC,param::MGparam{VAL,IND},b::Array,x0::Array,verbose::Bool = false) where {VAL,IND}
 	return solveCG_MG(getAfun(AT,zeros(eltype(b),size(b)),param.numCores),param,b,x0,verbose);
 end
-function solveGMRES_MG(AT::SparseCSCTypes,param::MGparam,b::ArrayTypes,x0::ArrayTypes,verbose::Bool = false,inner=3)
+function solveGMRES_MG(AT::SparseMatrixCSC,param::MGparam{VAL,IND},b::Array,x0::Array,verbose::Bool = false,inner=3) where {VAL,IND}
 	return solveGMRES_MG(getAfun(AT,zeros(eltype(b),size(b)),param.numCores),param,b,x0,verbose,inner);
 end
 
 
-function solveBiCGSTAB_MG(Afun::Function,param::MGparam,b::ArrayTypes,x0::ArrayTypes,verbose::Bool = false)
+function solveBiCGSTAB_MG(Afun::Function,param::MGparam{VAL,IND},b::Array,x0::Array,verbose::Bool = false) where {VAL,IND}
 MMG = getMultigridPreconditioner(param,b,verbose);
 out= -2;
 if verbose
@@ -102,7 +101,7 @@ end
 
 
 
-function solveCG_MG(Afun::Function,param::MGparam,b::ArrayTypes,x0::ArrayTypes,verbose::Bool = false)
+function solveCG_MG(Afun::Function,param::MGparam{VAL,IND},b::Array,x0::Array,verbose::Bool = false) where {VAL,IND}
 MMG = getMultigridPreconditioner(param,b,verbose);
 out = -2;
 if verbose
@@ -119,7 +118,7 @@ end
 
 
 
-function solveGMRES_MG(Afun::Function,param::MGparam,b::ArrayTypes,x0::ArrayTypes,verbose::Bool = false,inner=3,flexible = false)
+function solveGMRES_MG(Afun::Function,param::MGparam{VAL,IND},b::Array,x0::Array,verbose::Bool = false,inner=3,flexible = false) where {VAL,IND}
 MMG = getMultigridPreconditioner(param,b,verbose);
 out = -2;
 if verbose

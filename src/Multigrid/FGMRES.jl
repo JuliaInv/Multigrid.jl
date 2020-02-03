@@ -1,13 +1,13 @@
 export getFGMRESmem,FGMRES,FGMRES_relaxation
 
-mutable struct FGMRESmem
-	v_prec              ::ArrayTypes ## memory for the result of the preconditioner
-	Az					::ArrayTypes ## memory for the result of A*z.
-	V    				::ArrayTypes
-	Z					::ArrayTypes
+mutable struct FGMRESmem{T}
+	v_prec              ::Array{T} ## memory for the result of the preconditioner
+	Az					::Array{T} ## memory for the result of A*z.
+	V    				::Array{T}
+	Z					::Array{T}
 end
 
-function resetMem(mem::FGMRESmem)
+function resetMem(mem::FGMRESmem{T}) where T
 mem.v_prec[:].=0.0;
 mem.Az[:].=0.0;
 mem.V[:].=0.0;
@@ -16,7 +16,6 @@ end
 
 function getFGMRESmem(n::Int64,flexible::Bool,T::Type,k::Int64,m::Int64=1)
 ## Effectively we do not use v_prec and Az.
-
 v_prec = zeros(T,0);
 Az = zeros(T,0);
 if m==1
@@ -28,28 +27,28 @@ else
 end
 
 if flexible 
-	return FGMRESmem(v_prec,Az,zeros(T,n,k*m),zeros(T,n,k*m));
+	return FGMRESmem{T}(v_prec,Az,zeros(T,n,k*m),zeros(T,n,k*m));
 else
-	return FGMRESmem(v_prec,Az,zeros(T,n,k*m),zeros(T,0));
+	return FGMRESmem{T}(v_prec,Az,zeros(T,n,k*m),zeros(T,0));
 end
 end
 
 
-function getEmptyFGMRESmem()
-return FGMRESmem(zeros(0),zeros(0),zeros(0),zeros(0));
+function getEmptyFGMRESmem(T::Type)
+return FGMRESmem{T}(zeros(T,0),zeros(T,0),zeros(T,0),zeros(T,0));
 end
 import Base.isempty
-function isempty(mem::FGMRESmem)
+function isempty(mem::FGMRESmem{T}) where T
 return size(mem.V,1)==0;
 end
 
-function FGMRES_relaxation(AT::SparseMatrixCSC,r0::Vector,x0::Vector,inner::Int64,prec::Function,TOL::Float64,
-                 verbose::Bool,flexible::Bool,numCores::Int64, mem::FGMRESmem =  getEmptyFGMRESmem())
-return FGMRES_relaxation(getAfun(AT,zeros(eltype(r0),size(r0)),numCores),r0,x0,inner,prec,TOL,verbose,flexible,numCores,mem);
+function FGMRES_relaxation(AT::SparseMatrixCSC,r0::Vector{T},x0::Vector{T},inner::Int64,prec::Function,TOL::Float64,
+                 verbose::Bool,flexible::Bool,numCores::Int64, mem::FGMRESmem{T} =  getEmptyFGMRESmem(T)) where T
+return FGMRES_relaxation(getAfun(AT,zeros(T,size(r0)),numCores),r0,x0,inner,prec,TOL,verbose,flexible,numCores,mem);
 end
 
-function FGMRES_relaxation(Afun::Function,r0::Vector,x0::Vector,inner::Int64,prec::Function,TOL::Float64,
-                 verbose::Bool,flexible::Bool,numCores::Int64, mem::FGMRESmem = getEmptyFGMRESmem())
+function FGMRES_relaxation(Afun::Function,r0::Vector{T},x0::Vector{T},inner::Int64,prec::Function,TOL::Float64,
+                 verbose::Bool,flexible::Bool,numCores::Int64, mem::FGMRESmem{T} = getEmptyFGMRESmem(T)) where T
 
 n = length(r0);
 if isempty(mem)
@@ -64,14 +63,12 @@ end
 
 rnorm0 = norm(r0);
 
-TYPE = eltype(r0);
+H = zeros(T,inner,inner);
+xi = zeros(T,inner);
+t = zeros(T,inner);
 
-H = zeros(TYPE,inner,inner);
-xi = zeros(TYPE,inner);
-t = zeros(TYPE,inner);
-
-constOne = one(TYPE);
-constZero = zero(TYPE);
+constOne = one(T);
+constZero = zero(T);
 
 
 Z = mem.Z;

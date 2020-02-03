@@ -232,8 +232,6 @@ void RelaxVankaFacesColor(spIndType *rowptr , spValType *valA ,spIndType *colA,l
 // }
 
 
-
-
 void applyHybridCellWiseKaczmarz(spIndType *rowptr , spValType *valA ,spIndType *colA,long long *n,long long *nf,long long dim,
 								spValType *x, spValType *b, vankaPrecType *D,long long numit,long long includePressure,
 								long long numCores, unsigned int *ArrIdxs,long long numDomains, long long domainLength){
@@ -299,10 +297,6 @@ void applyHybridCellWiseKaczmarz(spIndType *rowptr , spValType *valA ,spIndType 
 				
 				}
 			}  
-			
-			
-			
-			
 		}
 	}
 	free(Idxs);

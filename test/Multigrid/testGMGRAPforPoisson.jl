@@ -23,7 +23,7 @@ relaxPost   = 1;
 cycleType   ='V';
 coarseSolveType = "NoMUMPS";
 
-MG = getMGparam(levels,numCores,maxIter,relativeTol,relaxType,relaxParam,relaxPre,relaxPost,cycleType,coarseSolveType,0.5,0.0);
+MG = getMGparam(Float64,Int64,levels,numCores,maxIter,relativeTol,relaxType,relaxParam,relaxPre,relaxPost,cycleType,coarseSolveType,0.5,0.0);
 
 N = size(Ar,2);
 
@@ -32,15 +32,15 @@ b = b/norm(b);
 x = zeros(N,2);  
 
 
-MGsetup(Ar,Mr,MG,Float64,size(b,2),true);
+MGsetup(Ar,Mr,MG,size(b,2),true);
 
 println("****************************** Stand-alone GMG RAP for Poisson: ******************************")
 solveMG(MG,b,x,true);
 @test norm(Ar*x - b) < 0.005;
 println("****************************** Stand-alone GMG RAP : iterative coarsest ***********************")
 coarseSolveType = "BiCGSTAB"
-MG = getMGparam(levels,numCores,maxIter,relativeTol,relaxType,relaxParam,relaxPre,relaxPost,cycleType,coarseSolveType,0.5,0.0);
-MGsetup(Ar,Mr,MG,Float64,size(b,2),true);
+MG = getMGparam(Float64,Int64,levels,numCores,maxIter,relativeTol,relaxType,relaxParam,relaxPre,relaxPost,cycleType,coarseSolveType,0.5,0.0);
+MGsetup(Ar,Mr,MG,size(b,2),true);
 solveMG(MG,b,x,true);
 @test norm(Ar*x - b) < 0.001;
 println("****************************** GMRES preconditioned with GMG: (only one rhs...) ******************************")
@@ -49,8 +49,8 @@ b = vec(b[:,1]);
 x = vec(x[:,1]);
 relaxType   = "Jac-GMRES";
 coarseSolveType = "NoMUMPS"
-MG = getMGparam(levels,numCores,maxIter,relativeTol,relaxType,relaxParam,relaxPre,relaxPost,cycleType,coarseSolveType,0.5,0.0);
-MGsetup(Ar,Mr,MG,Float64,size(b,2),true);
+MG = getMGparam(Float64,Int64,levels,numCores,maxIter,relativeTol,relaxType,relaxParam,relaxPre,relaxPost,cycleType,coarseSolveType,0.5,0.0);
+MGsetup(Ar,Mr,MG,size(b,2),true);
 solveGMRES_MG(Ar,MG,b,x,true,2)
 @test norm(Ar*x - b) < 0.001;
 
@@ -64,7 +64,7 @@ G = getNodalGradientMatrix(Mr);
 Ar = G'*G;
 Ar = Ar + 1e-4*opnorm(Ar,1)*sparse(1.0I,size(Ar,2),size(Ar,2));
 
-MG = getMGparam(levels,numCores,maxIter,relativeTol,relaxType,relaxParam,relaxPre,relaxPost,cycleType,coarseSolveType,0.5,0.0);
+MG = getMGparam(Float64,Int64,levels,numCores,maxIter,relativeTol,relaxType,relaxParam,relaxPre,relaxPost,cycleType,coarseSolveType,0.5,0.0);
 
 N = size(Ar,2);
 
@@ -72,7 +72,7 @@ b = Ar*rand(N,2);
 b = b/norm(b);
 x = zeros(N,2);
 
-MGsetup(Ar,Mr,MG,Float64,size(b,2),true);
+MGsetup(Ar,Mr,MG,size(b,2),true);
 
 println("****************************** Stand-alone 3D GMG RAP Poisson: ******************************")
 solveMG(MG,b,x,true);

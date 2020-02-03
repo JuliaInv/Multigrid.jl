@@ -3,10 +3,6 @@ using KrylovMethods
 using Multigrid.DomainDecomposition
 
 import jInv.LinearSolvers.copySolver;
-#import jInv.LinearSolvers.AbstractSolver
-#import jInvLinearSolvers.SparseCSCTypes
-#import jInvLinearSolvers.ArrayTypes
-#import jInvLinearSolvers.hasParSpMatVec
 
 export MGparam;
 export getMGparam, MGsetup, clear!
@@ -53,10 +49,10 @@ Fields:
 	r::ArrayTypes - memory for the residual
 	x::ArrayTypes - memory for the iterated solution
 """
-mutable struct CYCLEmem
-	b 					::ArrayTypes
-	r					::ArrayTypes
-	x					::ArrayTypes
+mutable struct CYCLEmem{VAL}
+	b 					::Array{VAL}
+	r					::Array{VAL}
+	x					::Array{VAL}
 end
 
 """
@@ -85,9 +81,10 @@ Fields:
 	strongConnParam::Float64  - (for SA-AMG only) A threshold for determining a strong connection should >0.25, and <0.85. 
 	FilteringParam::Float64	  - (for SA-AMG only) A threshold for prolongation filtering >0.0, and <0.2.
 	Meshes::Array{RegularMesh} 		 - Array of Regular Meshes for geometric multigrid.
-	transferOperatorType:: String	- (for geometric MG only) May be "FullWeighting", "SystemsFacesLinear"  
+	transferOperatorType:: String	- (for geometric MG only) May be "FullWeighting", "SystemsFacesLinear"
+	singlePrecision		:: Bool - indicator for single precision computation. For internal use.
 """ 
-mutable struct MGparam
+mutable struct MGparam{VAL,IND}
 	levels				:: Int64
 	numCores			:: Int64
 	maxOuterIter		:: Int64
@@ -99,7 +96,7 @@ mutable struct MGparam
 	cycleType			:: Char
 	Ps					:: Array{SparseCSCTypes}
 	Rs					:: Array{SparseCSCTypes}
-	As					:: Array{SparseCSCTypes}
+	As					:: Array{SparseMatrixCSC{VAL,IND}}
 	relaxPrecs
 	memCycle			:: Array{CYCLEmem}
 	memRelax			:: Array{FGMRESmem} 
@@ -131,24 +128,25 @@ function Multigrid.copySolver(MG::MGparam)
 
 copies the solver parameters without the setup and allocated memory.
 """
-function copySolver(MG::MGparam)
-return getMGparam(MG.levels,MG.numCores,MG.maxOuterIter,MG.relativeTol,MG.relaxType,MG.relaxParam,
-					MG.relaxPre,MG.relaxPost,MG.cycleType,MG.coarseSolveType,MG.strongConnParam,MG.FilteringParam,MG.transferOperatorType,MG.singlePrecision);
+function copySolver(MG::MGparam{VAL,IND}) where {VAL,IND}
+return getMGparam(VAL,IND,MG.levels,MG.numCores,MG.maxOuterIter,MG.relativeTol,MG.relaxType,MG.relaxParam,
+					MG.relaxPre,MG.relaxPost,MG.cycleType,MG.coarseSolveType,MG.strongConnParam,MG.FilteringParam,MG.transferOperatorType);
 end
 
 
 
-function getMGparam(levels::Int64,numCores::Int64,maxIter::Int64,relativeTol:: Float64,relaxType::String,relaxParam,
-					relaxPre::Function,relaxPost::Function,cycleType::Char='V',coarseSolveType::String="NoMUMPS",strongConnParam::Float64=0.4,FilteringParam::Float64 = 0.0,transferOperatorType = "FullWeighting",singlePrecision = false)
-return MGparam(levels,numCores,maxIter,relativeTol,relaxType,relaxParam,relaxPre,relaxPost,cycleType,[],[],[],[],Array{CYCLEmem}(undef,0),
-				Array{FGMRESmem}(undef,0),Array{FGMRESmem}(undef,0),coarseSolveType,[],0,strongConnParam,FilteringParam,Array{RegularMesh}(undef,0),transferOperatorType,singlePrecision);
+function getMGparam(VAL::Type,IND::Type,levels::Int64,numCores::Int64,maxIter::Int64,relativeTol:: Float64,relaxType::String,relaxParam,
+					relaxPre::Function,relaxPost::Function,cycleType::Char='V',coarseSolveType::String="NoMUMPS",strongConnParam::Float64=0.4,FilteringParam::Float64 = 0.0,transferOperatorType = "FullWeighting")
+singlePrecision = (VAL==Float32 || VAL==ComplexF32);
+return MGparam{VAL,IND}(levels,numCores,maxIter,relativeTol,relaxType,relaxParam,relaxPre,relaxPost,cycleType,[],[],[],[],Array{CYCLEmem}(undef,0),
+				Array{FGMRESmem{VAL}}(undef,0),Array{FGMRESmem{VAL}}(undef,0),coarseSolveType,[],0,strongConnParam,FilteringParam,Array{RegularMesh}(undef,0),transferOperatorType,singlePrecision);
 end
 					
-function getMGparam(levels::Int64=3,numCores::Int64=8,maxIter::Int64=20,relativeTol::Float64=1e-6,relaxType::String="SPAI",relaxParam=1.0,
-					relaxPre::Int64=2,relaxPost::Int64=2,cycleType::Char='V',coarseSolveType::String="NoMUMPS",strongConnParam::Float64=0.4,FilteringParam::Float64 = 0.0,transferOperatorType = "FullWeighting",singlePrecision = false)
+function getMGparam(VAL::Type,IND::Type,levels::Int64=3,numCores::Int64=8,maxIter::Int64=20,relativeTol::Float64=1e-6,relaxType::String="SPAI",relaxParam=1.0,
+					relaxPre::Int64=2,relaxPost::Int64=2,cycleType::Char='V',coarseSolveType::String="NoMUMPS",strongConnParam::Float64=0.4,FilteringParam::Float64 = 0.0,transferOperatorType = "FullWeighting")
 relaxPreFun(x) = relaxPre;
 relaxPostFun(x) = relaxPost;
-return getMGparam(levels,numCores,maxIter,relativeTol,relaxType,relaxParam,relaxPreFun,relaxPostFun,cycleType,coarseSolveType,strongConnParam,FilteringParam,transferOperatorType,singlePrecision);
+return getMGparam(VAL,IND,levels,numCores,maxIter,relativeTol,relaxType,relaxParam,relaxPreFun,relaxPostFun,cycleType,coarseSolveType,strongConnParam,FilteringParam,transferOperatorType);
 end
 					
 function getCYCLEmem(n::Int64,m::Int64,T::Type,withB::Bool=true)
@@ -167,19 +165,19 @@ end
 end
 
 # import jInv.Utils.clear!
-function clear!(param::MGparam)
-param.Ps = Array{SparseMatrixCSC}(undef,0);
-param.Rs = Array{SparseMatrixCSC}(undef,0);
-param.As = Array{SparseMatrixCSC}(undef,0);
+function clear!(param::MGparam{VAL,IND}) where {VAL,IND}
+param.Ps = Array{SparseMatrixCSC{real(VAL),IND}}(undef,0);
+param.Rs = Array{SparseMatrixCSC{real(VAL),IND}}(undef,0);
+param.As = Array{SparseMatrixCSC{VAL,IND}}(undef,0);
 param.relaxPrecs = [];
-param.memCycle = Array{CYCLEmem}(undef,0);
-param.memRelax = Array{FGMRESmem}(undef,0);
-param.memKcycle = Array{FGMRESmem}(undef,0);
+param.memCycle = Array{CYCLEmem{VAL}}(undef,0);
+param.memRelax = Array{FGMRESmem{VAL}}(undef,0);
+param.memKcycle = Array{FGMRESmem{VAL}}(undef,0);
 param.Meshes = Array{RegularMesh}(undef,0);
 destroyCoarsestLU(param);
 end
 
-function destroyCoarsestLU(param::MGparam)
+function destroyCoarsestLU(param::MGparam{VAL,IND}) where {VAL,IND}
 if param.LU==[]
 	return;
 end
@@ -194,23 +192,23 @@ end
 return;
 end
 
-function getMGType(param::MGparam,btype::DataType)
-if btype <: Real
-	return param.singlePrecision ? Float32 : Float64;
-else
-	return param.singlePrecision ? Complex{Float32} : Complex{Float64};
-end
-end
+# function getMGType(param::MGparam,btype::DataType)
+# if btype <: Real
+	# return param.singlePrecision ? Float32 : Float64;
+# else
+	# return param.singlePrecision ? Complex{Float32} : Complex{Float64};
+# end
+# end
 
-function getMGType(param::MGparam,b::Array)
-if eltype(b) <: Real
-	return param.singlePrecision ? Float32 : Float64;
-else
-	return param.singlePrecision ? Complex{Float32} : Complex{Float64};
-end
-end
+# function getMGType(param::MGparam,b::Array)
+# if eltype(b) <: Real
+	# return param.singlePrecision ? Float32 : Float64;
+# else
+	# return param.singlePrecision ? Complex{Float32} : Complex{Float64};
+# end
+# end
 
-function hierarchyExists(param::MGparam)
+function hierarchyExists(param::MGparam{VAL,IND}) where {VAL,IND}
 return length(param.As) > 0;
 end
 
