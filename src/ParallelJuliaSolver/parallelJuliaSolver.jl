@@ -227,9 +227,7 @@ end
 
 import jInv.LinearSolvers.copySolver
 function copySolver(Ainv::parallelJuliaSolver{VAL,IND}) where {VAL,IND}
-	println("IM HERE!!!")
 	param = parallelJuliaSolver{VAL,IND}(copy(Ainv.L),copy(Ainv.U),copy(Ainv.p),copy(Ainv.q),Ainv.numCores,Ainv.backend,0,0,0.0,0,0.0);
-	println("IM HERE AGAIN!!!")
 	return param;
 end
 

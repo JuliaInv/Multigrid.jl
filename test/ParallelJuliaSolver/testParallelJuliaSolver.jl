@@ -28,7 +28,7 @@ LU = getParallelJuliaSolver(Float64,Int64,numCores=1,backend=1);
 for j=1:length(Bs)
 	print("nrhs=$(size(Bs[j],2)), issparse(rhs)=$(issparse(Bs[j])) : ")
 	t = @elapsed x,  = solveLinearSystem(Ar,Bs[j],LU);
-	@test norm(Ar*x-Bs[j],Inf)/norm(Bs[j],Inf) < 1e-5
+	@test norm(Ar*x-Bs[j],Inf)/norm(Bs[j],Inf) < 1e-8
 	#println("V0: took ",t);
 	println("LU solve time: ",LU.solveTime);
 	LU.solveTime=0.0;
@@ -40,7 +40,7 @@ LU = getParallelJuliaSolver(Float64,Int64,numCores=1,backend=2);
 for j=1:length(Bs)
 	print("nrhs=$(size(Bs[j],2)), issparse(rhs)=$(issparse(Bs[j])) : ")
 	t = @elapsed x,  = solveLinearSystem(Ar,Bs[j],LU);
-	@test norm(Ar*x-Bs[j],Inf)/norm(Bs[j],Inf) < 1e-5
+	@test norm(Ar*x-Bs[j],Inf)/norm(Bs[j],Inf) < 1e-8
 	#println("V1: took ",t);
 	println("LU solve time: ",LU.solveTime);
 	LU.solveTime=0.0;
@@ -51,7 +51,7 @@ LU = getParallelJuliaSolver(Float64,Int64,numCores=2,backend=3);
 for j=1:length(Bs)
 	print("nrhs=$(size(Bs[j],2)), issparse(rhs)=$(issparse(Bs[j])) : ")
 	t = @elapsed x,  = solveLinearSystem(Ar,Bs[j],LU);
-	@test norm(Ar*x-Bs[j],Inf)/norm(Bs[j],Inf) < 1e-5
+	@test norm(Ar*x-Bs[j],Inf)/norm(Bs[j],Inf) < 1e-8
 	#println("V1: took ",t);
 	println("LU solve time: ",LU.solveTime);
 	LU.solveTime=0.0;
@@ -63,7 +63,7 @@ LU = getParallelJuliaSolver(Float32,UInt32,numCores=2,backend=3);
 for j=1:length(Bs)
 	print("nrhs=$(size(Bs[j],2)), issparse(rhs)=$(issparse(Bs[j])) : ")
 	t = @elapsed x,  = solveLinearSystem(Ar,Bs[j],LU);
-	@test norm(Ar*x-Bs[j],Inf)/norm(Bs[j],Inf) < 1e-5
+	@test norm(Ar*x-Bs[j],Inf)/norm(Bs[j],Inf) < 1e-4
 	#println("V1: took ",t);
 	println("LU solve time: ",LU.solveTime);
 	LU.solveTime=0.0;
@@ -92,7 +92,7 @@ LU = getParallelJuliaSolver(ComplexF32,UInt32,numCores=2,backend=3);
 for j=1:length(Bs)
 	print("nrhs=$(size(Bs[j],2)), issparse(rhs)=$(issparse(Bs[j])) : ")
 	x,  = solveLinearSystem(Ar,Bs[j],LU);
-	@test norm(Ar*x-Bs[j],Inf)/norm(Bs[j],Inf) < 1e-5
+	@test norm(Ar*x-Bs[j],Inf)/norm(Bs[j],Inf) < 1e-4
 	print("\n")
 end
 println("")
@@ -124,30 +124,30 @@ X, = solveLinearSystem(A,Bs,sNonSym,1);
 println("===  Testing parallel backend with transposed  ===")
 sNonSym  = getParallelJuliaSolver(Float64,Int64,numCores=2,backend=3);
 X, = solveLinearSystem(A,B,sNonSym,0);
-@test norm(A*X - B)/norm(B) < 1e-5
+@test norm(A*X - B)/norm(B) < 1e-8
 X, = solveLinearSystem(A,B,sNonSym,1);
-@test norm(A'*X - B)/norm(B) < 1e-5
+@test norm(A'*X - B)/norm(B) < 1e-8
 X, = solveLinearSystem(A,B,sNonSym,1);
-@test norm(A'*X - B)/norm(B) < 1e-5
+@test norm(A'*X - B)/norm(B) < 1e-8
 X, = solveLinearSystem(A,B,sNonSym,0);
-@test norm(A*X - B)/norm(B) < 1e-5
+@test norm(A*X - B)/norm(B) < 1e-8
 X, = solveLinearSystem(A,Bs,sNonSym,1);
-@test norm(A'*X - Bs)/norm(Bs) < 1e-5
+@test norm(A'*X - Bs)/norm(Bs) < 1e-8
 
 println("===  Testing parallel backend with transposed  ===")
 sNonSym  = getParallelJuliaSolver(Float32,UInt32,numCores=2,backend=3);
 B = randn(Float32,n)
 Bs = randn(Float32,n,5)
 X, = solveLinearSystem(A,B,sNonSym,0);
-@test norm(A*X - B)/norm(B) < 1e-5
+@test norm(A*X - B)/norm(B) < 1e-4
 X, = solveLinearSystem(A,B,sNonSym,1);
-@test norm(A'*X - B)/norm(B) < 1e-5
+@test norm(A'*X - B)/norm(B) < 1e-4
 X, = solveLinearSystem(A,B,sNonSym,1);
-@test norm(A'*X - B)/norm(B) < 1e-5
+@test norm(A'*X - B)/norm(B) < 1e-4
 X, = solveLinearSystem(A,B,sNonSym,0);
-@test norm(A*X - B)/norm(B) < 1e-5
+@test norm(A*X - B)/norm(B) < 1e-4
 X, = solveLinearSystem(A,Bs,sNonSym,1);
-@test norm(A'*X - Bs)/norm(Bs) < 1e-5
+@test norm(A'*X - Bs)/norm(Bs) < 1e-4
 
 println("===  Testing parallel backend with complex transposed 64bit  ===")
 sNonSym  = getParallelJuliaSolver(ComplexF64,Int64,numCores=2,backend=3);
@@ -169,14 +169,14 @@ sNonSym  = getParallelJuliaSolver(ComplexF32,UInt32,numCores=2,backend=3);
 B = randn(ComplexF32,n)
 Bs = randn(ComplexF32,n,5)
 X, = solveLinearSystem(A,B,sNonSym,0);
-@test norm(A*X - B)/norm(B) < 1e-5
+@test norm(A*X - B)/norm(B) < 1e-4
 X, = solveLinearSystem(A,B,sNonSym,1);
-@test norm(A'*X - B)/norm(B) < 1e-5
+@test norm(A'*X - B)/norm(B) < 1e-4
 X, = solveLinearSystem(A,B,sNonSym,1);
-@test norm(A'*X - B)/norm(B) < 1e-5
+@test norm(A'*X - B)/norm(B) < 1e-4
 X, = solveLinearSystem(A,B,sNonSym,0);
-@test norm(A*X - B)/norm(B) < 1e-5
+@test norm(A*X - B)/norm(B) < 1e-4
 X, = solveLinearSystem(A,Bs,sNonSym,1);
-@test norm(A'*X - Bs)/norm(Bs) < 1e-5
+@test norm(A'*X - Bs)/norm(Bs) < 1e-4
 
-println("===  End Test Julia Wrapper ====");
+println("===  End Test Parallel Julia Solver ====");
