@@ -34,7 +34,7 @@ for j=1:length(Bs)
 	LU.solveTime=0.0;
 end
 
-
+clear!(LU);
 LU = getParallelJuliaSolver(Float64,Int64,numCores=1,backend=2);
 
 for j=1:length(Bs)
@@ -75,6 +75,7 @@ b      = Ar*rand(ComplexF64,N);
 bs     = Ar*rand(ComplexF64,N,5);
 Bs     = (b,bs);
 
+LU = copySolver(LU);
 clear!(LU);
 
 LU = getParallelJuliaSolver(ComplexF64,Int64,numCores=2,backend=3);

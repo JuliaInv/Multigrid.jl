@@ -33,6 +33,7 @@ function copy(A::MySparseMatrixCSR{VAL,IND}) where {VAL,IND}
 	B.nzval.=A.nzval;
 	B.rowptr.=A.rowptr;
 	B.colval.=A.colval;
+	return B;
 end
 
 import Base.isempty
@@ -213,8 +214,8 @@ end
 import jInv.LinearSolvers.clear!
 function clear!(param::parallelJuliaSolver{VAL,IND}) where {VAL,IND}
 	if param.backend==1
-		param.L = spzeros(VAL,IND,0);
-		param.U = spzeros(VAL,IND,0);
+		param.L = spzeros(VAL,IND,0,0);
+		param.U = spzeros(VAL,IND,0,0);
 	else
 		param.L = getEmptySparseMatrixCSR(VAL,IND,0,0,0);
 		param.U = getEmptySparseMatrixCSR(VAL,IND,0,0,0);
@@ -226,7 +227,9 @@ end
 
 import jInv.LinearSolvers.copySolver
 function copySolver(Ainv::parallelJuliaSolver{VAL,IND}) where {VAL,IND}
+	println("IM HERE!!!")
 	param = parallelJuliaSolver{VAL,IND}(copy(Ainv.L),copy(Ainv.U),copy(Ainv.p),copy(Ainv.q),Ainv.numCores,Ainv.backend,0,0,0.0,0,0.0);
+	println("IM HERE AGAIN!!!")
 	return param;
 end
 
