@@ -15,8 +15,8 @@
 	@testset "testGMGRAPforElasticity.jl" begin
        include("testGMGRAPforElasticity.jl")
     end
-	# @testset "testHybridKaczmarz.jl" begin
-       # include("testHybridKaczmarz.jl")
-    # end
+	@testset "testHybridKaczmarz.jl" begin
+       include("testHybridKaczmarz.jl")
+    end
 	
 end

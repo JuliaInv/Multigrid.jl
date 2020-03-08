@@ -3,6 +3,7 @@ using SparseArrays
 using LinearAlgebra
 using jInv.Mesh
 import jInv.LinearSolvers.AbstractSolver
+import jInv.LinearSolvers.getJuliaSolver
 import Multigrid.ArrayTypes
 import jInv.LinearSolvers.solveLinearSystem
 import jInv.LinearSolvers.solveLinearSystem!
@@ -28,7 +29,7 @@ mutable struct DomainDecompositionParam <: AbstractSolver
 	nSolve::Int
 	solveTime::Real
 end
-function getDomainDecompositionParam(Mesh,numDomains,overlap,getIndicesOfCell,Ainv::AbstractSolver)
+function getDomainDecompositionParam(Mesh,numDomains,overlap,getIndicesOfCell,Ainv::AbstractSolver = getJuliaSolver())
 	return DomainDecompositionParam((AbstractSolver)[],Mesh,numDomains,overlap,getIndicesOfCell,Ainv,(Int64)[],getEmptyCtor(),0,0,0,0.0,0,0.0);
 end
 mutable struct DomainDecompositionOperatorConstructor

@@ -101,7 +101,7 @@ end
 
 function getNodalIndicesOfCell(NumCells::Array{Int64,1},overlap::Array{Int64,1},i,nc)
 	if length(i)==3
-		error("Fix 3D");
+		error("getNodalIndicesOfCell::Fix 3D");
 	end
 	originalUpperLeftCorner = [(i[1]-1)*div(nc[1],NumCells[1]) + 1,(i[2]-1)*div(nc[2],NumCells[2]) + 1];
 	originalBottomRightCorner = originalUpperLeftCorner + [div(nc[1],NumCells[1]),div(nc[2],NumCells[2])];
@@ -109,7 +109,7 @@ function getNodalIndicesOfCell(NumCells::Array{Int64,1},overlap::Array{Int64,1},
 	i2 = vec(originalUpperLeftCorner[2]:originalBottomRightCorner[2]);
 	I1 = i1*ones(Int64,length(i2))';
 	I2 = ones(Int64,length(i1))*i2';
-	ind = I1[:] + (I2[:]-1)*(nc[1]+1)
+	ind = I1[:] + (I2[:].-1)*(nc[1]+1)
 	
 	if originalUpperLeftCorner[1] > 1
 		originalUpperLeftCorner[1]-=overlap[1];
@@ -127,7 +127,7 @@ function getNodalIndicesOfCell(NumCells::Array{Int64,1},overlap::Array{Int64,1},
 	i2 = vec(originalUpperLeftCorner[2]:originalBottomRightCorner[2]);
 	I1 = i1*ones(Int64,length(i2))';
 	I2 = ones(Int64,length(i1))*i2';
-	indOver = I1[:] + (I2[:]-1)*(nc[1]+1)
+	indOver = I1[:] + (I2[:].-1)*(nc[1]+1)
 	
 	return indOver
 end
@@ -220,12 +220,12 @@ function getFacesStaggeredIndicesOfCellNoPressure(NumCells::Array{Int64},overlap
 		# end
 		# W1 = w1*w2;
 		
-		indNC = I1[:] + (I2[:]-1)*(nc[1]+1)
+		indNC = I1[:] .+ (I2[:].-1)*(nc[1]+1)
 	
 		# CELLS X NODES
 		(UpperLeftCorner,BottomRightCorner) = getBoxWithOverlap(originalUpperLeftCorner,originalBottomRightCorner+ [0;1],nc + [0;1],overlap);
 		I1,I2 = getBoxIdxs(UpperLeftCorner,BottomRightCorner);
-		indCN = I1[:] + (I2[:]-1)*(nc[1])
+		indCN = I1[:] .+ (I2[:].-1)*(nc[1])
 		# w1 = ones(BottomRightCorner[1] - UpperLeftCorner[1] + 1);
 		# if originalUpperLeftCorner[1] > 1 
 			# w1[1:(originalUpperLeftCorner[1] - UpperLeftCorner[1])] = 0.0;
@@ -243,7 +243,7 @@ function getFacesStaggeredIndicesOfCellNoPressure(NumCells::Array{Int64},overlap
 			# w2[end+1 - (BottomRightCorner[2] - originalBottomRightCorner[2])] = 0.5;
 		# end
 		# W2 = w1*w2;
-		indOver = [indNC; indCN + nf[1]];
+		indOver = [indNC; indCN .+ nf[1]];
 		
 		# weightOver = [W1[:];W2[:]];
 	else
@@ -254,19 +254,19 @@ function getFacesStaggeredIndicesOfCellNoPressure(NumCells::Array{Int64},overlap
 		# NODES X CELLS X CELLS
 		(UpperLeftCorner,BottomRightCorner) = getBoxWithOverlap(originalUpperLeftCorner,originalBottomRightCorner + [1;0;0],nc + [1;0;0],overlap);
 		I1,I2,I3 = getBoxIdxs(UpperLeftCorner,BottomRightCorner);
-		indNCC = I1[:] + (I2[:]-1)*(nc[1]+1) + (I3[:]-1)*((nc[1]+1)*nc[2]);
+		indNCC = I1[:] + (I2[:]-1)*(nc[1]+1) + (I3[:].-1)*((nc[1]+1)*nc[2]);
 	
 		# CELLS X NODES X CELLS
 		(UpperLeftCorner,BottomRightCorner) = getBoxWithOverlap(originalUpperLeftCorner,originalBottomRightCorner+ [0;1;0],nc + [0;1;0],overlap);
 		I1,I2,I3 = getBoxIdxs(UpperLeftCorner,BottomRightCorner);
-		indCNC = I1[:] + (I2[:]-1)*(nc[1]) + (I3[:]-1)*(nc[1]*(nc[2]+1));
+		indCNC = I1[:] .+ (I2[:].-1)*(nc[1]) + (I3[:].-1)*(nc[1]*(nc[2]+1));
 		
 		# CELLS X CELLS X NODES
 		(UpperLeftCorner,BottomRightCorner) = getBoxWithOverlap(originalUpperLeftCorner,originalBottomRightCorner+ [0;0;1],nc + [0;0;1],overlap);
 		I1,I2,I3 = getBoxIdxs(UpperLeftCorner,BottomRightCorner);
-		indCCN = I1[:] + (I2[:]-1)*(nc[1]) + (I3[:]-1)*(nc[1]*nc[2]);
+		indCCN = I1[:] .+ (I2[:].-1)*(nc[1]) + (I3[:].-1)*(nc[1]*nc[2]);
 		
-		indOver = [indNCC; indCNC + nf[1] ; indCCN + nf[1]+nf[2] ];
+		indOver = [indNCC; indCNC .+ nf[1] ; indCCN .+ (nf[1]+nf[2]) ];
 		# weightOver = 0; error("TBD");
 	end
 	

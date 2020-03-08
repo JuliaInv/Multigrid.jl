@@ -1,4 +1,4 @@
-export getFGMRESmem,FGMRES,FGMRES_relaxation
+export getFGMRESmem,FGMRES_relaxation
 
 mutable struct FGMRESmem{T}
 	v_prec              ::Array{T} ## memory for the result of the preconditioner
@@ -52,7 +52,7 @@ function FGMRES_relaxation(Afun::Function,r0::Vector{T},x0::Vector{T},inner::Int
 
 n = length(r0);
 if isempty(mem)
-	warn("Allocating memory in GMRES")
+	println("WARNING: Allocating memory in GMRES")
 	mem = getFGMRESmem(n,true,eltype(r0),inner);
 else
     resetMem(mem);
@@ -98,7 +98,7 @@ for j = 1:inner
 	H = 0.5*H + 0.5*H';
 	t[:] = pinv(H)*xi;
 	
-	rnorms[j] = sqrt(real(dot(t,H*t)-2.0*dot(t,xi)+rnorm0^2));
+	rnorms[j] = sqrt(abs(real(dot(t,H*t)-2.0*dot(t,xi)+rnorm0^2)));
 
     if verbose
 		if j==1

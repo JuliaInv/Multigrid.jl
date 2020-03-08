@@ -5,8 +5,9 @@ function getIndicesOfCellsArray(param::DomainDecompositionParam)
 	overlap 			= param.overlap;
 	numDomains 			= param.numDomains
 	getIndicesOfCell	= param.getIndicesOfCell;
-	Idxs = getIndicesOfCell(numDomains,overlap,div.(ncells,2)+1,ncells);
-	lenIdxs = length(Idxs)
+	## This is just a tryout:
+	Idxs = getIndicesOfCell(numDomains,overlap,div.(ncells,2).+1,ncells);
+	lenIdxs = length(Idxs);
 	ArrIdxs = zeros(UInt32,lenIdxs,prod(numDomains));
 	for ic = 1:prod(numDomains);
 		icloc = cs2loc(ic,numDomains);
