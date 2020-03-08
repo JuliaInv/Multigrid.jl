@@ -10,9 +10,10 @@ notifications:
   email: false
 
 before_install:
+   - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
 
 script:
   - julia --check-bounds=yes -e 'using Pkg; Pkg.build(); Pkg.build("Multigrid"); Pkg.test("Multigrid";coverage=true)'
 
 after_success:
-  - julia -e 'cd(Pkg.dir("Multigrid")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())'
+  - julia -e 'using Pkg; import Multigrid; cd(joinpath(dirname(pathof(Multigrid)),"..")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())'
