@@ -75,21 +75,7 @@ function getLinearOperatorsSystemsFaces(n::Array{Int64},withCellsBlock::Bool)
 	return (P,R,nc);
 end
 
-function get1DRestrictionCells(n::Int64)
-	## R is an 2X1 aggregation restriction.
-	if n < 8
-		return speye(n),n;
-	end
-	nc = div(n,2);
-	if 2*nc != n
-		error("Err: get1DRestrictionCells(): size should be a multiplication of 2");
-	end
-	#R = 1/2*spdiagm((ones(n-1),ones(n-1)),[0,1],n-1,n);
-	I,J,V = SparseArrays.spdiagm_internal(0 => fill(.5,n-1), 1 => fill(.5,n-1))
-	R = sparse(I, J, V, n-1, n);
-	R = R[1:2:n,:];
-	return R,nc;
-end
+
 
 function get1DNodeInjection(n_cells::Int64)
 	## R is a node injection operator - C,F,C,F,...,C
@@ -122,8 +108,8 @@ function get1DNodeFullWeightRestriction(n_cells::Int64)
 	R = spdiagm(-1=>fill(.25,n), 0=>fill(.5,n+1) , 1=>fill(.25,n));
 	
     R = sparse(R[:,1:2:end]');
-	R[1,1:2] = [0.75 0.25];
-	R[end,end-1:end] = [0.25 0.75];
+	# R[1,1:2] = [0.75 0.25];
+	# R[end,end-1:end] = [0.25 0.75];
 	return R,nc;
 end
 
@@ -141,13 +127,30 @@ function get1DProlongationCellCentered(ncells_fine::Int64)
 	#P  = spdiagm(((1/4)*ones(n-2),(3/4)*ones(n-1),(3/4)*ones(n),(1/4)*ones(n-1)),[-2,-1,0,1],n,n);
 	P = spdiagm(-2=> fill(.25,n-2), -1=>fill(.75,n-1), 0=>fill(.75,n-1) , 1=>fill(.25,n-1));
 	P = P[:,1:2:end];
-	P[1,1:2] = [5/4,-1/4];
-	P[end,end-1:end] = [-1/4,5/4];
+	# P[1,1:2] = [5/4,-1/4];
+	# P[end,end-1:end] = [-1/4,5/4];
+	P[1,1] = 1.0;
+	P[end,end] = 1.0;
 	return P,nc;
 end
 
-function get1DProlongationNodes(ncells_fine::Int64)
-	## P takes a two cells [C,C] into [F,F,F,F] 
+function get1DRestrictionCells(n::Int64)
+	## R is an 2X1 aggregation restriction.
+	if n < 8
+		return speye(n),n;
+	end
+	nc = div(n,2);
+	if 2*nc != n
+		error("Err: get1DRestrictionCells(): size should be a multiplication of 2");
+	end
+	#R = 1/2*spdiagm((ones(n-1),ones(n-1)),[0,1],n-1,n);
+	I,J,V = SparseArrays.spdiagm_internal(0 => fill(.5,n-1), 1 => fill(.5,n-1))
+	R = sparse(I, J, V, n-1, n);
+	R = R[1:2:n,:];
+	return R,nc;
+end
+
+function get1DProlongationNodes(ncells_fine::Int64) 
 	n = ncells_fine;
 	if n < 8
 		return speye(n+1),n;
@@ -185,7 +188,7 @@ end
 
 function getRestrictionFacesInjectionUj(n::Array{Int64},j::Int64)
     # n here is number of cells.
-	R = Array{SparseMatrixCSC}(length(n));
+	R = Array{SparseMatrixCSC}(undef,length(n));
 	nc = zeros(Int64,length(n));
 	for kk = 1:length(n)
 		if kk == j

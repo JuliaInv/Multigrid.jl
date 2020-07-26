@@ -1,6 +1,7 @@
 module Multigrid
 	using LinearAlgebra
 	using SparseArrays
+	using Statistics
 	using ParSpMatVec;
 	
 	const global hasParSpMatVec = ParSpMatVec.isBuilt();

@@ -4,7 +4,7 @@ const parRelax_lib  = abspath(joinpath(splitdir(Base.source_path())[1],"../..","
 
 mutable struct hybridKaczmarz{VAL,IND}
 	DDparam 	:: DomainDecompositionParam;
-	invDiag 	:: Array{VAL}
+	invDiag 	:: Array
 	numCores	:: Int64
 	omega_damp	:: Float64
 	ArrIdxs 	:: Array{UInt32,2}

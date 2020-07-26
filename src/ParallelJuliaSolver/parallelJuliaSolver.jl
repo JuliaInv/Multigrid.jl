@@ -70,12 +70,12 @@ end
 
 
 import jInv.LinearSolvers.solveLinearSystem
-function solveLinearSystem(A::SparseMatrixCSC,B::Array{VAL},param::parallelJuliaSolver{VAL,IND},doTranspose::Int64=0) where {VAL,IND}
-	return solveLinearSystem!(A,B,copy(B),param,doTranspose);
+function solveLinearSystem(A::SparseMatrixCSC,B::Union{Array{VAL},SparseMatrixCSC},param::parallelJuliaSolver{VAL,IND},doTranspose::Int64=0) where {VAL,IND}
+	return solveLinearSystem!(A,B,Matrix(B),param,doTranspose);
 end
 
 import jInv.LinearSolvers.solveLinearSystem!
-function solveLinearSystem!(A::SparseMatrixCSC,B::Array{VAL},X::Array{VAL},param::parallelJuliaSolver{VAL,IND},doTranspose::Int64=0) where {VAL,IND}
+function solveLinearSystem!(A::SparseMatrixCSC,B::Union{Array{VAL},SparseMatrixCSC},X::Array{VAL},param::parallelJuliaSolver{VAL,IND},doTranspose::Int64=0) where {VAL,IND}
 	if param.doClear == 1
 		clear!(param)
 	end
@@ -84,6 +84,9 @@ function solveLinearSystem!(A::SparseMatrixCSC,B::Array{VAL},X::Array{VAL},param
 		param.nFac+=1
 	end
 	if !isempty(B)
+		if issparse(B)
+			B = Matrix(B);
+		end
 		param.solveTime += @elapsed X = solve(B,X,param,doTranspose);
 		param.nSolve+=1
 	end

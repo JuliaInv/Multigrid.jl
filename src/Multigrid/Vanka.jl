@@ -2,14 +2,19 @@ export RelaxVankaFaces,RelaxVankaFacesColor,getVankaFacesPreconditioner,cellColo
 
 export getHybridCellWisePrecond,getHybridCellWiseParam
 
-const Vanka_lib  = abspath(joinpath(splitdir(Base.source_path())[1],"..","deps","builds","Vanka"))
+export GetElasticityOperatorMixedFormulation
 
-## Make sure these match the types in Vanka.c
-const vankaPrecType = ComplexF32
+const Vanka_lib     = abspath(joinpath(splitdir(Base.source_path())[1],"../..","deps","builds","Vanka"))
 
-
-
-
+function toSingle(VAL::Type)
+if VAL==Float64
+	return Float32;
+elseif VAL==ComplexF64
+	return ComplexF32
+else
+	return VAL;
+end
+end
 
 
 function getVankaVariablesOfCell(i::Array{Int64},n::Array{Int64},nf::Array{Int64},Idxs::Array,includePressure::Bool)
@@ -116,11 +121,11 @@ end
 	# println(vecnorm(Acc-AccNew))
 # end
 
-function getDenseBlockFromAT(AT::SparseMatrixCSC,Idxs::Array,Acc::Array)
-	Acc[:] = 0.0;
+function getDenseBlockFromAT(AT::SparseMatrixCSC{VAL,IND},Idxs::Array,Acc::Array{VAL,2}) where {VAL,IND}
+	Acc[:] .= 0.0;
 	for t = 1:length(Idxs)
 		ii = AT.colptr[Idxs[t]];
-		jj = 1;
+		jj = 1;		
 		while ii < AT.colptr[Idxs[t]+1] && jj <= length(Idxs)  
 			if AT.rowval[ii] ==  Idxs[jj]
 				Acc[t,jj] = conj(AT.nzval[ii]);
@@ -159,27 +164,47 @@ end
 # end
 
 
+function computeResidualAtIdx(AT::SparseMatrixCSC{VAL,IND},b::Array{VAL},x::Array{VAL},Idxs::Array{IND}) where {VAL,IND}
+r = b[Idxs];
+for t = 1:length(Idxs)
+	for tt = AT.colptr[Idxs[t]]:AT.colptr[Idxs[t]+1]-1
+		r[t] = r[t] - conj(AT.nzval[tt])*x[AT.rowval[tt]];
+	end
+end
+
+#void computeResidualAtIdx(long long *rowptr , double complex *valA ,long long *colA,double complex *b,double complex *x,long long* Idxs, double complex *local_r, int blockSize){
+# local_r = r*0.0;
+# ccall((:computeResidualAtIdx,lib),Void,(Ptr{Int64},Ptr{ComplexF64},Ptr{Int64},Ptr{Complex128},Ptr{Complex128},Ptr{Int64},Ptr{Complex128},Int16,)
+								 # ,AT.colptr,AT.nzval,AT.rowval,b,x,Idxs,local_r,convert(Int16,length(Idxs)));
+# if norm(local_r - r) > 1e-14
+	# error("Fix computeResidualAtIdx in C: ",norm(local_r - r));
+# end
+return r;
+end
 
 
-
-function getVankaFacesPreconditioner(AT::SparseMatrixCSC,M::RegularMesh,w::Float64,includePressure::Bool,kaczmarz::Bool = false)
-nf = 0;
-n = M.n;
+function getVankaBlockSize(n::Array{Int64},includePressure::Bool)
 blockSize = 0;
-if length(M.n)==2
+nf = 0;
+if length(n)==2
 	nf = [prod(n + [1; 0]),prod(n + [0; 1])];
 	blockSize = includePressure ? 5 : 4;
 else
 	nf = [prod(n + [1; 0; 0]),prod(n + [0; 1; 0]),prod(n + [0; 0; 1])];
 	blockSize = includePressure ? 7 : 6;	
 end
+return blockSize,nf;
+end
 
+function setupVankaFacesPreconditioner(AT::SparseMatrixCSC{VAL,IND},M::RegularMesh,w::Float64,includePressure::Bool,kaczmarz::Bool = false) where {VAL,IND}
+n = M.n;
+vankaPrecType = toSingle(VAL);
+blockSize,nf = getVankaBlockSize(n,includePressure);
 LocalBlocks = zeros(vankaPrecType,blockSize*blockSize,prod(M.n));
-
 Acc = zeros(eltype(AT),blockSize,blockSize);
 Idx_i = zeros(spIndType,blockSize);
-for ii = 1:prod(M.n)
-	i = cs2loc(ii,M.n);
+for ii = 1:prod(n)
+	i = cs2loc(ii,n);
 	Idx_i = getVankaVariablesOfCell(i,n,nf,Idx_i,includePressure);
 	## THESE LINES ARE REALLY SLOW
 	# Acc1 = AT[Idx_i,Idx_i];
@@ -189,33 +214,24 @@ for ii = 1:prod(M.n)
 		Acc = getDenseBlockFromAT(AT,Idx_i,Acc)
 		AccInv = convert(Array{vankaPrecType},(w.*inv(Acc))');
 	else
-		# Acc = getDenseBlockFromAT(AT,Idx_i,Acc)
-		# AccInv = inv(convert(Array{Complex128},Acc));
-		# AccInv = AccInv'*AccInv;
-		# AccInv = convert(Array{vankaPrecType},(w.*AccInv)');
 		ATi = convert(SparseMatrixCSC{ComplexF64,Int64},AT[:,Idx_i]);
 		AccInv = convert(Array{vankaPrecType},(w.*inv(full(ATi'*ATi)))');
-		# print(minimum(real(eig(AccInv)[1])),", ");
 	end
 	LocalBlocks[:,ii] = AccInv[:];
 end
 return LocalBlocks;
 end
 
-function RelaxVankaFacesColor(AT::SparseMatrixCSC,x::ArrayTypes,b::ArrayTypes,y::ArrayTypes,D::Array{vankaPrecType,2},numit::Int64,numCores::Int64,M::RegularMesh,includePressure::Bool)
+function RelaxVankaFacesColor(AT::SparseMatrixCSC{VAL,IND},x::Array{VAL},b::Array{VAL},y::Array{VAL},
+								D::Array,numit::Int64,numCores::Int64,M::RegularMesh,
+								includePressure::Bool) where {VAL,IND}
 # function RelaxVankaFaces(AT::SparseMatrixCSC,M::RegularMesh)
+	if toSingle(VAL)!=eltype(D)
+		error("check types.");
+	end
 	n = M.n;
 	dim = M.dim;
-	blockSize = 0;
-	nf = 0;
-	if dim==2
-		nf = [prod(n + [1; 0]),prod(n + [0; 1])];
-		blockSize = includePressure ? 5 : 4;
-	else
-		# Face sizes
-		nf = [prod(n + [1; 0; 0]),prod(n + [0; 1; 0]),prod(n + [0; 0; 1])];
-		blockSize = includePressure ? 7 : 6;
-	end
+	blockSize,nf = getVankaBlockSize(n,includePressure);
 	parallel = true;
 	if parallel==false
 		Idxs = zeros(Int64,blockSize);
@@ -241,12 +257,8 @@ function RelaxVankaFacesColor(AT::SparseMatrixCSC,x::ArrayTypes,b::ArrayTypes,y:
 			end
 		end
 	else
-		# y[:] = 0.0;
-		# void RelaxVankaFacesColor(long long *rowptr , double complex *valA ,long long *colA,
-							  # long long *n,long long *nf,long long dim,double complex *x,double complex *b,
-							  # float complex *D,long long numit,long long includePressure,long long numCores){
-		ccall((:RelaxVankaFacesColor,Vanka_lib),Nothing,(Ptr{Int64},Ptr{spValType},Ptr{Int64},Ptr{Int64}, Ptr{Int64}, Int64,Ptr{spValType},Ptr{spValType},Ptr{spValType},Ptr{vankaPrecType},Int64, Int64, Int64,Int64,),
-			AT.colptr,AT.nzval,AT.rowval,n, nf, dim,x,b,y,D,numit,convert(Int64,includePressure),length(x),numCores);
+		y[:] .= 0.0;
+		applyVankaFacesColor(AT,x,b,y,D,numit,numCores,n,nf,dim,convert(Int64,includePressure));
 	end
 	# if norm(x - y_t) > 1e-14
 		# error("Fix RelaxVankaFacesColor in C: ",norm(x - y_t));
@@ -254,25 +266,41 @@ function RelaxVankaFacesColor(AT::SparseMatrixCSC,x::ArrayTypes,b::ArrayTypes,y:
 	# println("Diff: ",norm(x-y_t));
 	return x;
 end
+# GET_VANKA(ValName,IndName)(spIndType *rowptr , spValType *valA ,spIndType *colA,long long *n,long long *nf,long long dim,
+							# spValType *x, spValType *b, spValType *y, vankaPrecType *D,long long numit,long long includePressure,
+							# long long lengthVecs, long long numCores){
+# function applyVankaFacesColor(AT::SparseMatrixCSC{VAL,IND},x::Array{VAL},b::Array{VAL},y::Array{VAL},
+								# D::Array,numit::Int64,numCores::Int64,n::Array{Int64},nf::Array{Int64},dim::Int64,includePressure::Int64)
+	# ccall((:RelaxVankaFacesColor_FP64_INT64,Vanka_lib),Nothing,(Ptr{IND},Ptr{VAL},Ptr{IND},Ptr{Int64}, Ptr{Int64}, Int64,Ptr{VAL},Ptr{VAL},Ptr{VAL},Ptr{toSingle(VAL)},Int64, Int64, Int64,Int64,),
+			# AT.colptr,AT.nzval,AT.rowval,n, nf, dim,x,b,y,D,numit,convert(Int64,includePressure),length(x),numCores);
+# end
+
+function applyVankaFacesColor(AT::SparseMatrixCSC{Float64,Int64},x::Array{Float64},b::Array{Float64},y::Array{Float64},
+								D::Array,numit::Int64,numCores::Int64,n::Array{Int64},nf::Array{Int64},dim::Int64,includePressure::Int64)
+	ccall((:RelaxVankaFacesColor_FP64_INT64,Vanka_lib),Nothing,(Ptr{Int64},Ptr{Float64},Ptr{Int64},Ptr{Int64}, Ptr{Int64}, Int64,Ptr{Float64},Ptr{Float64},Ptr{Float64},Ptr{toSingle(Float64)},Int64, Int64, Int64,Int64,),
+			AT.colptr,AT.nzval,AT.rowval,n, nf, dim,x,b,y,D,numit,includePressure,length(x),numCores);
+end
 
 
-function getHybridCellWiseParam(AT::SparseMatrixCSC,Mesh::RegularMesh, numDomains::Array{Int64,1},omega::Float64,numCores::Int64,numit::Int64,mixed::Bool,Kaczmarz::Bool)
+
+function getHybridCellWiseParam(AT::SparseMatrixCSC{VAL,IND},Mesh::RegularMesh, numDomains::Array{Int64,1},
+								omega::Float64,numCores::Int64,numit::Int64,mixed::Bool,Kaczmarz::Bool) where {VAL,IND}
 if prod(numDomains) < numCores
-	warn("WARNING: getHybridKaczmarz: numDomains < numCores.");
+	println("WARNING: getHybridKaczmarz: numDomains < numCores.");
 end
 DDparam = getDomainDecompositionParam(Mesh,numDomains,zeros(Int64,size(numDomains)),getCellCenteredIndicesOfCell);
-invDiag = getVankaFacesPreconditioner(AT,Mesh,omega,mixed,Kaczmarz);
+invDiag = setupVankaFacesPreconditioner(AT,Mesh,omega,mixed,Kaczmarz);
 if Kaczmarz
 	ArrIdxs = getIndicesOfCellsArray(DDparam);
 else
 	ArrIdxs = zeros(UInt32,0,0);
 end
-return hybridKaczmarz(DDparam,invDiag,numCores,omega,ArrIdxs,identity,numit);
+return hybridKaczmarz{VAL,IND}(DDparam,invDiag,numCores,omega,ArrIdxs,identity,numit);
 end
 
 
 
-function getHybridCellWisePrecond(param::hybridKaczmarz,AT::SparseMatrixCSC{spValType,Int64},x::Array{spValType},includePressure::Bool,Kaczmarz::Bool)
+function getHybridCellWisePrecond(param::hybridKaczmarz{VAL,IND},AT::SparseMatrixCSC{VAL,IND},x::Array{VAL},includePressure::Bool,Kaczmarz::Bool) where {VAL,IND}
 M = param.DDparam.Mesh;
 invDiag = param.invDiag;
 numCores = param.numCores;
@@ -292,10 +320,10 @@ else
 	blockSize = includePressure ? 7 : 6;
 end
 if Kaczmarz
-	param.precond = (r)->(x[:] = 0.0; ccall((:applyHybridCellWiseKaczmarz,Vanka_lib),Nothing,(Ptr{Int64},Ptr{spValType},Ptr{Int64},Ptr{Int64}, Ptr{Int64}, Int64,Ptr{spValType},Ptr{spValType},Ptr{vankaPrecType},Int64, Int64, Int64,Ptr{UInt32},Int64,Int64,),
+	param.precond = (r)->(x[:] = 0.0; ccall((:applyHybridCellWiseKaczmarz,Vanka_lib),Nothing,(Ptr{Int64},Ptr{VAL},Ptr{Int64},Ptr{Int64}, Ptr{Int64}, Int64,Ptr{VAL},Ptr{VAL},Ptr{VAL},Int64, Int64, Int64,Ptr{UInt32},Int64,Int64,),
 			AT.colptr,AT.nzval,AT.rowval,n, nf, dim,x,r,invDiag,numit,convert(Int64,includePressure),numCores,ArrIdxs,prod(numDomains),size(ArrIdxs,1)); return x;);
 else ## Vanka
-	param.precond = (r)->(x[:] = 0.0; ccall((:RelaxVankaFacesColor,Vanka_lib),Nothing,(Ptr{Int64},Ptr{spValType},Ptr{Int64},Ptr{Int64}, Ptr{Int64}, Int64,Ptr{spValType},Ptr{spValType},Ptr{spValType},Ptr{vankaPrecType},Int64, Int64, Int64,Int64,),
+	param.precond = (r)->(x[:] = 0.0; ccall((:RelaxVankaFacesColor,Vanka_lib),Nothing,(Ptr{Int64},Ptr{VAL},Ptr{Int64},Ptr{Int64}, Ptr{Int64}, Int64,Ptr{VAL},Ptr{VAL},Ptr{VAL},Ptr{VAL},Int64, Int64, Int64,Int64,),
 			AT.colptr,AT.nzval,AT.rowval,n, nf, dim,x,r,x,invDiag,numit,convert(Int64,includePressure),length(x),numCores); return x;);
 end
 return param.precond; 
@@ -303,23 +331,9 @@ end
 
 
 
-function computeResidualAtIdx(AT::SparseMatrixCSC,b::Array,x::Array,Idxs::Array{spIndType})
-r = b[Idxs];
-for t = 1:length(Idxs)
-	for tt = AT.colptr[Idxs[t]]:AT.colptr[Idxs[t]+1]-1
-		r[t] = r[t] - conj(AT.nzval[tt])*x[AT.rowval[tt]];
-	end
-end
 
-#void computeResidualAtIdx(long long *rowptr , double complex *valA ,long long *colA,double complex *b,double complex *x,long long* Idxs, double complex *local_r, int blockSize){
-# local_r = r*0.0;
-# ccall((:computeResidualAtIdx,lib),Void,(Ptr{Int64},Ptr{ComplexF64},Ptr{Int64},Ptr{Complex128},Ptr{Complex128},Ptr{Int64},Ptr{Complex128},Int16,)
-								 # ,AT.colptr,AT.nzval,AT.rowval,b,x,Idxs,local_r,convert(Int16,length(Idxs)));
-# if norm(local_r - r) > 1e-14
-	# error("Fix computeResidualAtIdx in C: ",norm(local_r - r));
-# end
-return r;
-end
+
+
 
 
 

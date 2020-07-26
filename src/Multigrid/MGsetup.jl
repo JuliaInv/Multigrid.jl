@@ -13,7 +13,13 @@ Meshes  	= Array{RegularMesh}(undef,param.levels);
 relaxPrecs 	= Array{Any}(undef,param.levels);
 
 #MGType = getMGType(param,rhsType);
+relaxParamArr = zeros(param.levels);
 
+if length(param.relaxParam)==1
+	relaxParamArr[:] .= param.relaxParam;
+else
+	relaxParamArr[:] .= param.relaxParam;
+end
 
 PDEparam = 0;
 if isa(ATf,SparseMatrixCSC)==true
@@ -40,29 +46,35 @@ for l = 1:(param.levels-1)
 	if param.transferOperatorType=="SystemsFacesMixedLinear"
 		withCellsBlock = true;
 	end
-	
+	geometric = !isa(ATf,SparseMatrixCSC);
 	if param.transferOperatorType=="FullWeighting"
-		geometric = !isa(ATf,SparseMatrixCSC);
 		(P,nc) = getFWInterp(n.+1,geometric);
 		nc = nc.-1;
-		if isa(ATf,SparseMatrixCSC)
-			RT = P;
-			PT = P';
-		else
-			RT = (0.5^Meshes[l].dim)*P;
-			PT = sparse(P');
+		RT = copy(P);
+		PT = sparse(P');
+		if geometric
+			# we need to make sure that the coarse "Galerkin" operator scales like the geometric stencil.
+			RT.nzval.*=(0.5^Meshes[l].dim);
 		end
 		P = 0;
 	elseif param.transferOperatorType=="SystemsFacesLinear" || param.transferOperatorType=="SystemsFacesMixedLinear"
 		(P,R,nc) = getLinearOperatorsSystemsFaces(n,withCellsBlock);
 		PT = sparse(P');
 		RT = sparse(R');
+		# PT = copy(R);
+		# RT = copy(P);
 		P = 0;
 		R = 0;
+		if geometric
+			# we need to make sure that the coarse "Galerkin" operator scales like the geometric stencil.
+			RT.nzval.*=(0.5^Meshes[l].dim);
+		end
 	end
 	
+	
+	
 	if param.relaxType=="Jac" || param.relaxType=="Jac-GMRES"
-		d = param.relaxParam./diag(AT);
+		d = relaxParamArr[l]./diag(AT);
 		d = sparse(Diagonal(d));
 		if param.singlePrecision
 			relaxPrecs[l] = convert(SparseMatrixCSC{VAL,IND},d);# here we need to take the conjugate for the SpMatVec, but we give At instead of A so it cancels
@@ -71,9 +83,10 @@ for l = 1:(param.levels-1)
 		end
 		
 	elseif param.relaxType=="SPAI"
-		relaxPrecs[l] = sparse(Diagonal(param.relaxParam*getSPAIprec(AT))); # here we need to take the conjugate for the SpMatVec, but we give At instead of A so it cancels
+		relaxPrecs[l] = sparse(Diagonal(relaxParamArr[l]*getSPAIprec(AT))); # here we need to take the conjugate for the SpMatVec, but we give At instead of A so it cancels
 	elseif param.relaxType=="VankaFaces"
-		relaxPrecs[l] = getVankaFacesPreconditioner(AT,Meshes[l],param.relaxParam[l],withCellsBlock);
+		
+		relaxPrecs[l] = setupVankaFacesPreconditioner(AT,Meshes[l],relaxParamArr[l],withCellsBlock);
 	else
 		error("Unknown relaxation type !!!!");
 	end
@@ -209,6 +222,15 @@ end
 
 
 function replaceMatrixInHierarchy(param::MGparam{VAL,IND},AT::SparseMatrixCSC{VAL,IND},verbose::Bool=false) where {VAL,IND}
+
+relaxParamArr = zeros(param.levels);
+
+if length(param.relaxParam)==1
+	relaxParamArr[:] .= param.relaxParam;
+else
+	relaxParamArr[:] .= param.relaxParam;
+end
+
 param.As[1] = convert(SparseMatrixCSC{VAL,IND},AT);
 Cop = nnz(AT);
 T_time = 0;	
@@ -219,8 +241,8 @@ for l = 1:(param.levels-1)
     AT = param.As[l];
 	
 	if param.relaxType=="Jac" || param.relaxType=="Jac-GMRES"
-		d = param.relaxParam./diag(AT);
-		d = spdiagm(d);
+		d = relaxParamArr[l]./diag(AT);
+		d = spdiagm(0=>d);
 		param.relaxPrecs[l] = d;
 		if param.singlePrecision
 			param.relaxPrecs[l] = convert(SparseMatrixCSC{VAL,IND},d);# here we need to take the conjugate for the SpMatVec, but we give At instead of A so it cancels
@@ -229,7 +251,7 @@ for l = 1:(param.levels-1)
 	elseif param.relaxType=="SPAI"
 		d = spdiagm(d);
 	elseif param.relaxType=="VankaFaces"
-		param.relaxPrecs[l] = getVankaFacesPreconditioner(AT,Meshes[l],param.relaxParam,withCellsBlock);
+		param.relaxPrecs[l] = getVankaFacesPreconditioner(AT,Meshes[l],relaxParamArr[l],withCellsBlock);
 	else
 		error("Unknown relaxation type !!!!");
 	end
@@ -365,7 +387,7 @@ if n_nodes > 2
     else
 		if geometric
 			P = sparse(1.0I,n_nodes,n_nodes);
-			warn("getFWInterp: in geometric mode we stop coarsening because num cells does not divide by two");
+			println("Warning: getFWInterp(): in geometric mode we stop coarsening because num cells does not divide by two");
 		else 
 			P = P[:,[1:2:end;end]];
 			P[end-1:end,end-1:end] = speye(2);

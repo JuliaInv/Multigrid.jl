@@ -1,49 +1,10 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <omp.h>
-#include <complex.h>
 
 
-#define ValName CFP32
-#define IndName INT64
-#define spIndType long long
-#define spValType float complex
-#include"parRelax.h"
-#undef spIndType
-#undef spValType
-#undef ValName
-#undef IndName
+#define TOKENPASTE(x, y, z) x ## y ##_## z
 
+#define applyHybridKaczmarz(T,S) TOKENPASTE(applyHybridKaczmarz_, T, S)
 
-#define ValName FP64
-#define IndName INT64
-#define spValType double
-#define spIndType long long
-#include"parRelax.h"
-#undef spIndType
-#undef spValType
-#undef ValName
-#undef IndName
-
-
-#define ValName FP32
-#define IndName INT64
-#define spValType float
-#define spIndType long long
-#include"parRelax.h"
-#undef spIndType
-#undef spValType
-#undef ValName
-#undef IndName
-
-
-
-
-
-
-/*
-void applyHybridKaczmarz(spIndType *rowptr , spValType *valA ,spIndType *colA, long long numDomains, long long domainLength ,
+void applyHybridKaczmarz(ValName,IndName)(spIndType *rowptr , spValType *valA ,spIndType *colA, long long numDomains, long long domainLength ,
 						unsigned int *ArrIdxs, spValType *x, spValType *b, spValType *invD,long long numit, long long numCores){
 	omp_set_num_threads(numCores);
 #pragma omp parallel shared(x,b,rowptr,valA,colA,invD,numit,ArrIdxs)
@@ -75,4 +36,3 @@ void applyHybridKaczmarz(spIndType *rowptr , spValType *valA ,spIndType *colA, l
 }
 	return;
 }
-*/

@@ -1,130 +1,11 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <omp.h>
-#include <complex.h>
-#include <stdbool.h>
 
-#define spIndType long long
-#define spValType float complex 
-#define vankaPrecType float complex 
 
-// gcc -O3 -fopenmp -shared -fpic -DBUILD_DLL Vanka.c -o Vanka.dll
+#define TOKENPASTE(x, y, z) x ## y ##_## z
 
-void cs2loc(long long cs_loc,long long *n,long long dim, long long *loc){
-	if (dim==3){
-		loc[0] = (cs_loc-1)%n[0] + 1;
-		loc[1] = (((cs_loc-1)%(n[0]*n[1]))/n[0]) + 1;
-		loc[2] = (cs_loc-1)/(n[0]*n[1]) + 1;
-	}else{
-		loc[0] = (cs_loc-1)%n[0] + 1;
-		loc[1] = (cs_loc-1)/n[0] + 1;
-	}
-	return;
-}
+#define TOKENPASTE1(x, y) x ## y 
 
-int cellColor(long long *i,long long dim){
-	if (dim==2){
-		/// 4-color
-		//if (i[0]%2 == 1){ 
-		//	 return i[1]%2==1 ? 1 : 2; 
-		// }else{ 
-		//	 return i[1]%2==1 ? 3 : 4; 
-		// }
-		/// Red-Black
-		if (i[0]%2 == 1){ 
-			return i[1]%2==1 ? 1 : 2; 
-		}else{ 
-			return i[1]%2==1 ? 2 : 1; 
-		}
-		
-		
-	}else{
-		/// 8-color
-		// if (i[0]%2 == 1){ 
-			// if (i[1]%2==1){
-				// return i[2]%2==1 ? 1 : 2; 
-			// }else{
-				// return i[2]%2==1 ? 3 : 4;
-			// }
-		// }else{ 
-			// if (i[1]%2==1){
-				// return i[2]%2==1 ? 5 : 6; 
-			// }else{
-				// return i[2]%2==1 ? 7 : 8;
-			// }
-		// }
-		
-		/// Red-black
-		if (i[0]%2 == 1){ 
-			if (i[1]%2==1){
-				return i[2]%2==1 ? 1 : 2; 
-			}else{
-				return i[2]%2==1 ? 2 : 1;
-			}
-		}else{ 
-			if (i[1]%2==1){
-				return i[2]%2==1 ? 2 : 1; 
-			}else{
-				return i[2]%2==1 ? 1 : 2;
-			}
-		}
-		
-		
-	}		
-}
-
-long long loc2cs3D(long long *loc,long long n1,long long n2,long long n3){
-return loc[0] + (loc[1]-1)*n1 + (loc[2]-1)*n1*n2;
-}
-
-void getVankaVariablesOfCell(long long *i,long long *n,long long *nf,spIndType *Idxs,long long includePressure, long long dim){
-long long t1,t2,t3;
-if (includePressure){
-	if (dim==2){	
-		t1 = i[0] + (i[1]-1)*(n[0]+1);
-		t2 = nf[0] + i[0] + (i[1]-1)*n[0];
-		Idxs[0] = t1;
-		Idxs[1] = t1+1;
-		Idxs[2] = t2;
-		Idxs[3] = t2 + n[0];
-		Idxs[4] = nf[1] + t2;
-	}else{
-		t1 = loc2cs3D(i,n[0]+1,n[1],n[2]); 
-		Idxs[0] = t1;
-		Idxs[1] = t1+1;
-		t2 = nf[0] + loc2cs3D(i,n[0],n[1]+1,n[2]);
-		Idxs[2] = t2;
-		Idxs[3] = t2+n[0];
-		t3 = nf[0] + nf[1] + loc2cs3D(i,n[0],n[1],n[2]+1);
-		Idxs[4] = t3;
-		Idxs[5] = t3+n[0]*n[1];
-		Idxs[6] = nf[2] + t3;
-	}
-}else{
-	if (dim==2){	
-		t1 = i[0] + (i[1]-1)*(n[0]+1);
-		t2 = nf[0] + i[0] + (i[1]-1)*n[0];
-		Idxs[0] = t1;
-		Idxs[1] = t1+1;
-		Idxs[2] = t2;
-		Idxs[3] = t2 + n[0];
-	}else{
-		t1 = loc2cs3D(i,n[0]+1,n[1],n[2]); 
-		Idxs[0] = t1;
-		Idxs[1] = t1+1;
-		t2 = nf[0] + loc2cs3D(i,n[0],n[1]+1,n[2]);
-		Idxs[2] = t2;
-		Idxs[3] = t2+n[0];
-		t3 = nf[0] + nf[1] + loc2cs3D(i,n[0],n[1],n[2]+1);
-		Idxs[4] = t3;
-		Idxs[5] = t3+n[0]*n[1];
-	}
-}
-return;
-}
-
-void computeResidualAtIdx(spIndType *rowptr , spValType *valA ,spIndType *colA,spValType *b,spValType *x,spIndType* Idxs, spValType *local_r, spIndType blockSize){
+#define computeResidualAtIdx(T,S) TOKENPASTE(computeResidualAtIdx_, T, S)
+void computeResidualAtIdx(ValName,IndName)(spIndType *rowptr , spValType *valA ,spIndType *colA, spValType *b, spValType *x,long long* Idxs, spValType *local_r, spIndType blockSize){
 	spIndType i,tt;
 	for (i = 0 ; i < blockSize ; ++i){
 		local_r[i] = b[Idxs[i]-1];
@@ -136,8 +17,8 @@ void computeResidualAtIdx(spIndType *rowptr , spValType *valA ,spIndType *colA,s
 	}	
 }
 
-
-void computeATvAndAddAtIdx(spIndType *rowptr , spValType *valA ,spIndType *colA,spValType *local_v,spValType *x,spIndType* Idxs, spIndType blockSize){
+#define computeATvAndAddAtIdx(T,S) TOKENPASTE(computeATvAndAddAtIdx_, T, S)
+void computeATvAndAddAtIdx(ValName,IndName)(spIndType *rowptr , spValType *valA ,spIndType *colA, spValType *local_v, spValType *x, long long* Idxs, spIndType blockSize){
 	spIndType i,tt;
 	for (i = 0 ; i < blockSize ; ++i){
 		for (tt = rowptr[Idxs[i]-1]; tt <= rowptr[Idxs[i]]-1 ; ++tt){
@@ -149,8 +30,8 @@ void computeATvAndAddAtIdx(spIndType *rowptr , spValType *valA ,spIndType *colA,
 
 
 
-
-void updateSolution(vankaPrecType *mat, spValType *x, spValType *r, int n,spIndType* Idxs){
+#define updateSolution(T) TOKENPASTE1(updateSolution_, T)
+void updateSolution(ValName)(vankaPrecType *mat, spValType *x, spValType *r, int n,long long* Idxs){
 	int i,j;
 	spValType t;
 	for (i=0 ; i<n; ++i){
@@ -162,7 +43,9 @@ void updateSolution(vankaPrecType *mat, spValType *x, spValType *r, int n,spIndT
 	}
 }
 
-void updateSolutionLocal(vankaPrecType *mat, spValType *x, spValType *r, int n){
+
+#define updateSolutionLocal(T) TOKENPASTE1(updateSolutionLocal_, T)
+void updateSolutionLocal(ValName)(vankaPrecType *mat, spValType *x, spValType *r, int n){
 	int i,j;
 	spValType t;
 	for (i=0 ; i<n; ++i){
@@ -175,7 +58,10 @@ void updateSolutionLocal(vankaPrecType *mat, spValType *x, spValType *r, int n){
 }
 
 
-void RelaxVankaFacesColor(spIndType *rowptr , spValType *valA ,spIndType *colA,long long *n,long long *nf,long long dim,
+
+
+#define RelaxVankaFacesColor(T,S) TOKENPASTE(RelaxVankaFacesColor_, T, S)
+void RelaxVankaFacesColor(ValName,IndName)(spIndType *rowptr , spValType *valA ,spIndType *colA,long long *n,long long *nf,long long dim,
 							spValType *x, spValType *b, spValType *y, vankaPrecType *D,long long numit,long long includePressure,
 							long long lengthVecs, long long numCores){
 	int numColors;
@@ -194,7 +80,7 @@ void RelaxVankaFacesColor(spIndType *rowptr , spValType *valA ,spIndType *colA,l
 {
 	int color;
 	spIndType k,i;
-	spIndType *Idxs = (spIndType*)malloc(blockSize*sizeof(spIndType));
+	long long *Idxs = (long long*)malloc(blockSize*sizeof(long long));
 	long long *i_vec = (long long*)malloc(dim*sizeof(long long));
 	spValType* local_r = (spValType*)malloc(blockSize*sizeof(spValType));
 	for (k=0 ; k < numit ; ++k){
@@ -209,8 +95,8 @@ void RelaxVankaFacesColor(spIndType *rowptr , spValType *valA ,spIndType *colA,l
 				cs2loc(i,n,dim,i_vec);
 				if (cellColor(i_vec,dim)==color){
 					getVankaVariablesOfCell(i_vec,n,nf,Idxs,includePressure,dim);
-					computeResidualAtIdx(rowptr,valA,colA,b,x,Idxs,local_r,blockSize);
-					updateSolution(D + (i-1)*blockSize*blockSize , x, local_r, blockSize,Idxs);
+					computeResidualAtIdx(ValName,IndName)(rowptr,valA,colA,b,x,Idxs,local_r,blockSize);
+					updateSolution(ValName)(D + (i-1)*blockSize*blockSize , x, local_r, blockSize,Idxs);
 				}
 			}
 		}
@@ -232,7 +118,8 @@ void RelaxVankaFacesColor(spIndType *rowptr , spValType *valA ,spIndType *colA,l
 // }
 
 
-void applyHybridCellWiseKaczmarz(spIndType *rowptr , spValType *valA ,spIndType *colA,long long *n,long long *nf,long long dim,
+#define applyHybridCellWiseKaczmarz(T,S) TOKENPASTE(applyHybridCellWiseKaczmarz_, T, S)
+void applyHybridCellWiseKaczmarz(ValName,IndName)(spIndType *rowptr , spValType *valA ,spIndType *colA,long long *n,long long *nf,long long dim,
 								spValType *x, spValType *b, vankaPrecType *D,long long numit,long long includePressure,
 								long long numCores, unsigned int *ArrIdxs,long long numDomains, long long domainLength){
 	spIndType N,blockSize;
@@ -248,7 +135,7 @@ void applyHybridCellWiseKaczmarz(spIndType *rowptr , spValType *valA ,spIndType 
 {
 	spIndType k,i;
 	long long cell,domain;
-	spIndType *Idxs = (spIndType*)malloc(blockSize*sizeof(spIndType));
+	long long *Idxs = (long long*)malloc(blockSize*sizeof(long long));
 	long long *cell_vec = (long long*)malloc(dim*sizeof(long long));
 	spValType* local_r = (spValType*)malloc(blockSize*sizeof(spValType));
 	spValType* local_x = (spValType*)malloc(blockSize*sizeof(spValType));
@@ -261,42 +148,42 @@ void applyHybridCellWiseKaczmarz(spIndType *rowptr , spValType *valA ,spIndType 
 					cs2loc(cell,n,dim,cell_vec);
 					getVankaVariablesOfCell(cell_vec,n,nf,Idxs,includePressure,dim);
 					// printf("Cell #%ld::",cell);
-					computeResidualAtIdx(rowptr,valA,colA,b,x,Idxs,local_r,blockSize);
+					computeResidualAtIdx(ValName,IndName)(rowptr,valA,colA,b,x,Idxs,local_r,blockSize);
 					// printf("rnorm %6.3e, ",computeNorm(local_r,blockSize));
-					updateSolutionLocal(D + (cell-1)*blockSize*blockSize , local_x, local_r, blockSize);
+					updateSolutionLocal(ValName)(D + (cell-1)*blockSize*blockSize , local_x, local_r, blockSize);
 					// printf("xnorm %6.3e, ",computeNorm(local_x,blockSize));
 					// printf("Dnorm %6.3e",computeNorm(D,blockSize*blockSize));
-					computeATvAndAddAtIdx(rowptr,valA,colA,local_x,x,Idxs,blockSize);
+					computeATvAndAddAtIdx(ValName,IndName)(rowptr,valA,colA,local_x,x,Idxs,blockSize);
 					// printf("\n");
 				}
 			}
-			 if (includePressure){
-				double complex inner;
-				double complex invD;
-				spIndType row;
-				spIndType gIdx;
-				for (i=0 ; i < domainLength ; ++i){
-					cell = (long long)ArrIdxs[domain*domainLength + i];
-					if (cell > 0){
-						invD = 0.0;
-						cs2loc(cell,n,dim,cell_vec);
-						getVankaVariablesOfCell(cell_vec,n,nf,Idxs,includePressure,dim);
-						row = Idxs[blockSize-1];
-						inner = b[row-1];
-						for (gIdx = rowptr[row-1]-1; gIdx < rowptr[row]-1; ++gIdx){
-							// gIdx is in C indices here...
-							inner -= conj(valA[gIdx])*x[colA[gIdx]-1];
-							invD += creal(conj(valA[gIdx])*valA[gIdx]);
-						}
-						inner*=(1.0/invD);
-						for (gIdx = rowptr[row-1]-1; gIdx < rowptr[row]-1; ++gIdx){
-							// gIdx is in C indices here...
-							x[colA[gIdx]-1] += inner*valA[gIdx];
-						}
-					}
+			// if (includePressure){
+				// double complex inner;
+				// double complex invD;
+				// spIndType row;
+				// spIndType gIdx;
+				// for (i=0 ; i < domainLength ; ++i){
+					// cell = (long long)ArrIdxs[domain*domainLength + i];
+					// if (cell > 0){
+						// invD = 0.0;
+						// cs2loc(cell,n,dim,cell_vec);
+						// getVankaVariablesOfCell(cell_vec,n,nf,Idxs,includePressure,dim);
+						// row = Idxs[blockSize-1];
+						// inner = b[row-1];
+						// for (gIdx = rowptr[row-1]-1; gIdx < rowptr[row]-1; ++gIdx){
+							// // gIdx is in C indices here...
+							// inner -= conj(valA[gIdx])*x[colA[gIdx]-1];
+							// invD += creal(conj(valA[gIdx])*valA[gIdx]);
+						// }
+						// inner*=(1.0/invD);
+						// for (gIdx = rowptr[row-1]-1; gIdx < rowptr[row]-1; ++gIdx){
+							// // gIdx is in C indices here...
+							// x[colA[gIdx]-1] += inner*valA[gIdx];
+						// }
+					// }
 				
-				}
-			}  
+				// }
+			// }  
 		}
 	}
 	free(Idxs);
@@ -306,18 +193,3 @@ void applyHybridCellWiseKaczmarz(spIndType *rowptr , spValType *valA ,spIndType 
 }
 	return;
 }
-
-
-
-
-
-
-
-
-
-int main(int argc, char **argv){	
-   return 0;
-  }
-
-	
-
