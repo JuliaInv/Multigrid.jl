@@ -70,9 +70,17 @@ end
 
 
 import jInv.LinearSolvers.solveLinearSystem
-function solveLinearSystem(A::SparseMatrixCSC,B::Union{Array{VAL},SparseMatrixCSC},param::parallelJuliaSolver{VAL,IND},doTranspose::Int64=0) where {VAL,IND}
+function solveLinearSystem(A::SparseMatrixCSC,B::SparseMatrixCSC,param::parallelJuliaSolver{VAL,IND},doTranspose::Int64=0) where {VAL,IND}
 	return solveLinearSystem!(A,B,Matrix(B),param,doTranspose);
 end
+
+
+import jInv.LinearSolvers.solveLinearSystem
+function solveLinearSystem(A::SparseMatrixCSC,B::Array{VAL},param::parallelJuliaSolver{VAL,IND},doTranspose::Int64=0) where {VAL,IND}
+	return solveLinearSystem!(A,B,copy(B),param,doTranspose);
+end
+
+
 
 import jInv.LinearSolvers.solveLinearSystem!
 function solveLinearSystem!(A::SparseMatrixCSC,B::Union{Array{VAL},SparseMatrixCSC},X::Array{VAL},param::parallelJuliaSolver{VAL,IND},doTranspose::Int64=0) where {VAL,IND}

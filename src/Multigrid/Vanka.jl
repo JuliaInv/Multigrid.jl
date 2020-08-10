@@ -6,6 +6,11 @@ export GetElasticityOperatorMixedFormulation
 
 const Vanka_lib     = abspath(joinpath(splitdir(Base.source_path())[1],"../..","deps","builds","Vanka"))
 
+
+const FULL_VANKA = 1
+const KACMARZ_VANKA = 2
+const ECON_VANKA = 3
+
 function toSingle(VAL::Type)
 if VAL==Float64
 	return Float32;
@@ -196,11 +201,15 @@ end
 return blockSize,nf;
 end
 
-function setupVankaFacesPreconditioner(AT::SparseMatrixCSC{VAL,IND},M::RegularMesh,w::Float64,includePressure::Bool,kaczmarz::Bool = false) where {VAL,IND}
+function setupVankaFacesPreconditioner(AT::SparseMatrixCSC{VAL,IND},M::RegularMesh,w::Float64,includePressure::Bool,VankaType::Int64 = FULL_VANKA) where {VAL,IND}
 n = M.n;
 vankaPrecType = toSingle(VAL);
 blockSize,nf = getVankaBlockSize(n,includePressure);
-LocalBlocks = zeros(vankaPrecType,blockSize*blockSize,prod(M.n));
+numVankaVarPerCell = blockSize*blockSize;
+if VankaType == ECON_VANKA
+	numVankaVarPerCell = blockSize + 2*(blockSize-1);
+end
+LocalBlocks = zeros(vankaPrecType,numVankaVarPerCell,prod(M.n));
 Acc = zeros(eltype(AT),blockSize,blockSize);
 Idx_i = zeros(spIndType,blockSize);
 for ii = 1:prod(n)
@@ -210,12 +219,17 @@ for ii = 1:prod(n)
 	# Acc1 = AT[Idx_i,Idx_i];
 	# Acc1 = full(Acc1');
 	
-	if !kaczmarz
+	if VankaType == FULL_VANKA
 		Acc = getDenseBlockFromAT(AT,Idx_i,Acc)
 		AccInv = convert(Array{vankaPrecType},(w.*inv(Acc))');
-	else
+	elseif VankaType == KACMARZ_VANKA
 		ATi = convert(SparseMatrixCSC{ComplexF64,Int64},AT[:,Idx_i]);
-		AccInv = convert(Array{vankaPrecType},(w.*inv(full(ATi'*ATi)))');
+		AccInv = convert(Array{vankaPrecType},(w.*inv(Matrix(ATi'*ATi)))');
+	elseif VankaType == ECON_VANKA
+		Acc = getDenseBlockFromAT(AT,Idx_i,Acc);
+		AccInv = [diag(Acc);Acc[1:end-1,end];Acc[end,1:end-1]];
+	else
+		error("unknown Vanka Type.")
 	end
 	LocalBlocks[:,ii] = AccInv[:];
 end
@@ -281,10 +295,24 @@ function applyVankaFacesColor(AT::SparseMatrixCSC{Float64,Int64},x::Array{Float6
 			AT.colptr,AT.nzval,AT.rowval,n, nf, dim,x,b,y,D,numit,includePressure,length(x),numCores);
 end
 
+function applyVankaFacesColor(AT::SparseMatrixCSC{ComplexF64,Int64},x::Array{ComplexF64},b::Array{ComplexF64},y::Array{ComplexF64},
+								D::Array,numit::Int64,numCores::Int64,n::Array{Int64},nf::Array{Int64},dim::Int64,includePressure::Int64)
+	ccall((:RelaxVankaFacesColor_FP64_INT64,Vanka_lib),Nothing,(Ptr{Int64},Ptr{ComplexF64},Ptr{Int64},Ptr{Int64}, Ptr{Int64}, Int64,Ptr{ComplexF64},Ptr{ComplexF64},Ptr{ComplexF64},Ptr{toSingle(ComplexF64)},Int64, Int64, Int64,Int64,),
+			AT.colptr,AT.nzval,AT.rowval,n, nf, dim,x,b,y,D,numit,convert(Int64,includePressure),length(x),numCores);
+end
+
+function applyVankaFacesColor(AT::SparseMatrixCSC{ComplexF32,Int64},x::Array{ComplexF32},b::Array{ComplexF32},y::Array{ComplexF32},
+								D::Array,numit::Int64,numCores::Int64,n::Array{Int64},nf::Array{Int64},dim::Int64,includePressure::Int64)
+	ccall((:RelaxVankaFacesColor_FP64_INT64,Vanka_lib),Nothing,(Ptr{Int64},Ptr{ComplexF32},Ptr{Int64},Ptr{Int64}, Ptr{Int64}, Int64,Ptr{ComplexF32},Ptr{ComplexF32},Ptr{ComplexF32},Ptr{toSingle(ComplexF32)},Int64, Int64, Int64,Int64,),
+			AT.colptr,AT.nzval,AT.rowval,n, nf, dim,x,b,y,D,numit,convert(Int64,includePressure),length(x),numCores);
+end
 
 
-function getHybridCellWiseParam(AT::SparseMatrixCSC{VAL,IND},Mesh::RegularMesh, numDomains::Array{Int64,1},
-								omega::Float64,numCores::Int64,numit::Int64,mixed::Bool,Kaczmarz::Bool) where {VAL,IND}
+
+
+
+function getHybridCellWiseParam(AT::SparseMatrixCSC{VAL,Int64},Mesh::RegularMesh, numDomains::Array{Int64,1},
+								omega::Float64,numCores::Int64,numit::Int64,mixed::Bool,Kaczmarz::Bool) where {VAL,Int64}
 if prod(numDomains) < numCores
 	println("WARNING: getHybridKaczmarz: numDomains < numCores.");
 end
@@ -300,34 +328,34 @@ end
 
 
 
-function getHybridCellWisePrecond(param::hybridKaczmarz{VAL,IND},AT::SparseMatrixCSC{VAL,IND},x::Array{VAL},includePressure::Bool,Kaczmarz::Bool) where {VAL,IND}
-M = param.DDparam.Mesh;
-invDiag = param.invDiag;
-numCores = param.numCores;
-numit = param.numit;
-ArrIdxs = param.ArrIdxs;
-numDomains = param.DDparam.numDomains;
-n = M.n;
-dim = M.dim;
-blockSize = 0;
-nf = 0;
-if dim==2
-	nf = [prod(n + [1; 0]),prod(n + [0; 1])];
-	blockSize = includePressure ? 5 : 4;
-else
-	# Face sizes
-	nf = [prod(n + [1; 0; 0]),prod(n + [0; 1; 0]),prod(n + [0; 0; 1])];
-	blockSize = includePressure ? 7 : 6;
-end
-if Kaczmarz
-	param.precond = (r)->(x[:] = 0.0; ccall((:applyHybridCellWiseKaczmarz,Vanka_lib),Nothing,(Ptr{Int64},Ptr{VAL},Ptr{Int64},Ptr{Int64}, Ptr{Int64}, Int64,Ptr{VAL},Ptr{VAL},Ptr{VAL},Int64, Int64, Int64,Ptr{UInt32},Int64,Int64,),
-			AT.colptr,AT.nzval,AT.rowval,n, nf, dim,x,r,invDiag,numit,convert(Int64,includePressure),numCores,ArrIdxs,prod(numDomains),size(ArrIdxs,1)); return x;);
-else ## Vanka
-	param.precond = (r)->(x[:] = 0.0; ccall((:RelaxVankaFacesColor,Vanka_lib),Nothing,(Ptr{Int64},Ptr{VAL},Ptr{Int64},Ptr{Int64}, Ptr{Int64}, Int64,Ptr{VAL},Ptr{VAL},Ptr{VAL},Ptr{VAL},Int64, Int64, Int64,Int64,),
-			AT.colptr,AT.nzval,AT.rowval,n, nf, dim,x,r,x,invDiag,numit,convert(Int64,includePressure),length(x),numCores); return x;);
-end
-return param.precond; 
-end
+# function getHybridCellWisePrecond(param::hybridKaczmarz{VAL,IND},AT::SparseMatrixCSC{VAL,IND},x::Array{VAL},includePressure::Bool,Kaczmarz::Bool) where {VAL,IND}
+# M = param.DDparam.Mesh;
+# invDiag = param.invDiag;
+# numCores = param.numCores;
+# numit = param.numit;
+# ArrIdxs = param.ArrIdxs;
+# numDomains = param.DDparam.numDomains;
+# n = M.n;
+# dim = M.dim;
+# blockSize = 0;
+# nf = 0;
+# if dim==2
+	# nf = [prod(n + [1; 0]),prod(n + [0; 1])];
+	# blockSize = includePressure ? 5 : 4;
+# else
+	# # Face sizes
+	# nf = [prod(n + [1; 0; 0]),prod(n + [0; 1; 0]),prod(n + [0; 0; 1])];
+	# blockSize = includePressure ? 7 : 6;
+# end
+# if Kaczmarz
+	# param.precond = (r)->(x[:] = 0.0; ccall((:applyHybridCellWiseKaczmarz,Vanka_lib),Nothing,(Ptr{Int64},Ptr{VAL},Ptr{Int64},Ptr{Int64}, Ptr{Int64}, Int64,Ptr{VAL},Ptr{VAL},Ptr{VAL},Int64, Int64, Int64,Ptr{UInt32},Int64,Int64,),
+			# AT.colptr,AT.nzval,AT.rowval,n, nf, dim,x,r,invDiag,numit,convert(Int64,includePressure),numCores,ArrIdxs,prod(numDomains),size(ArrIdxs,1)); return x;);
+# else ## Vanka
+	# param.precond = (r)->(x[:] = 0.0; ccall((:RelaxVankaFacesColor,Vanka_lib),Nothing,(Ptr{Int64},Ptr{VAL},Ptr{Int64},Ptr{Int64}, Ptr{Int64}, Int64,Ptr{VAL},Ptr{VAL},Ptr{VAL},Ptr{VAL},Int64, Int64, Int64,Int64,),
+			# AT.colptr,AT.nzval,AT.rowval,n, nf, dim,x,r,x,invDiag,numit,convert(Int64,includePressure),length(x),numCores); return x;);
+# end
+# return param.precond; 
+# end
 
 
 

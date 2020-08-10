@@ -70,9 +70,7 @@ for l = 1:(param.levels-1)
 			RT.nzval.*=(0.5^Meshes[l].dim);
 		end
 	end
-	
-	
-	
+
 	if param.relaxType=="Jac" || param.relaxType=="Jac-GMRES"
 		d = relaxParamArr[l]./diag(AT);
 		d = sparse(Diagonal(d));
@@ -81,12 +79,10 @@ for l = 1:(param.levels-1)
 		else
 			relaxPrecs[l] = d;
 		end
-		
 	elseif param.relaxType=="SPAI"
 		relaxPrecs[l] = sparse(Diagonal(relaxParamArr[l]*getSPAIprec(AT))); # here we need to take the conjugate for the SpMatVec, but we give At instead of A so it cancels
 	elseif param.relaxType=="VankaFaces"
-		
-		relaxPrecs[l] = setupVankaFacesPreconditioner(AT,Meshes[l],relaxParamArr[l],withCellsBlock);
+		relaxPrecs[l] = setupVankaFacesPreconditioner(AT,Meshes[l], relaxParamArr[l], withCellsBlock, FULL_VANKA);
 	else
 		error("Unknown relaxation type !!!!");
 	end

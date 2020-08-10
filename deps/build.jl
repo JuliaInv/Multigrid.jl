@@ -19,8 +19,8 @@ if !isdir(builddir)
 end
 
 @static if Sys.isunix()
-	src1 = joinpath(srcdir,"Vanka.h")
-	src2 = joinpath(srcdir,"parRelax.h");
+	src1 = joinpath(srcdir,"Vanka.c")
+	src2 = joinpath(srcdir,"parRelax.c");
 	src3 = joinpath(srcdir,"parLU.cpp");
 	outfile1 = joinpath(builddir,"Vanka.so")
 	outfile2 = joinpath(builddir,"parRelax.so")
@@ -33,8 +33,8 @@ end
 end
 
 @static if Sys.iswindows() 
-	src1 = joinpath(srcdir,"Vanka.h")
-	src2 = joinpath(srcdir,"parRelax.h");
+	src1 = joinpath(srcdir,"Vanka.c")
+	src2 = joinpath(srcdir,"parRelax.c");
 	src3 = joinpath(srcdir,"parLU.cpp");
 	outfile1 = joinpath(builddir,"Vanka.dll")
 	outfile2 = joinpath(builddir,"parRelax.dll")
