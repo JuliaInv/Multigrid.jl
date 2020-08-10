@@ -43,7 +43,7 @@ solveCG_MG(Ar,MG,b,x,true)
 println("************************************************* GMG RAP for Elasticity 3D  using Vanka ******************************************************");
 
 domain = [0.0, 1.0, 0.0, 1.0,0.0,1.0];
-n = [16,16,16];
+n = [8,8,8];
 Mr = getRegularMesh(domain,n)
 mu = 1.0*ones(prod(Mr.n));
 lambda = 10.0.*mu;
