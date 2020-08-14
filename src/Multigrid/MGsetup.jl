@@ -83,6 +83,8 @@ for l = 1:(param.levels-1)
 		relaxPrecs[l] = sparse(Diagonal(relaxParamArr[l]*getSPAIprec(AT))); # here we need to take the conjugate for the SpMatVec, but we give At instead of A so it cancels
 	elseif param.relaxType=="VankaFaces"
 		relaxPrecs[l] = setupVankaFacesPreconditioner(AT,Meshes[l], relaxParamArr[l], withCellsBlock, FULL_VANKA);
+	elseif param.relaxType=="EconVankaFaces"
+		relaxPrecs[l] = setupVankaFacesPreconditioner(AT,Meshes[l], relaxParamArr[l], withCellsBlock, ECON_VANKA);
 	else
 		error("Unknown relaxation type !!!!");
 	end

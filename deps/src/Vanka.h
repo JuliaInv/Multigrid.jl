@@ -28,18 +28,55 @@ void computeATvAndAddAtIdx(ValName,IndName)(spIndType *rowptr , spValType *valA 
 }
 
 
-
-
 #define updateSolution(T) TOKENPASTE1(updateSolution_, T)
 void updateSolution(ValName)(vankaPrecType *mat, spValType *x, spValType *r, int n,long long* Idxs){
-	int i,j;
+	// x[Idxs] = x[Idxs] + (reshape(D[:,i],blockSize,blockSize)'*r);
+	int i,j,offset;
 	spValType t;
 	for (i=0 ; i<n; ++i){
 		t = 0.0;
+		offset = i*n;
 		for (j=0 ; j<n; ++j){
-			t += conj(mat[i*n + j])*r[j];
+			t += conj(mat[offset + j])*r[j];
 		}
 		x[Idxs[i]-1] += t;
+	}
+}
+
+// # [ D    y ][a0] = [b0] 
+// # [ x'   z ][a1] = [b1]
+// # D*a0  + y*a1 = b0
+// # x'*a0 + z*a1 = b1
+// # 1) a1 = (b1 - x'*D\b0) / (z-x'*D\y)
+// # 2) a0 = D\(b0 - y*a1) = D\b0 - a1*D\y
+
+// # with w:
+// # 1) a1 = w*((b1 - x'*D\b0) / (z-x'*D\y))
+// # 2) a0 = w*(D\(b0 - y*a1)) = w*(D\b0 - a1*D\y)
+// # which is:
+// # 1) a1 = ((b1 - x'*D\b0) / ((z-x'*D\y)/w))
+// # 2) a0 = w*(D\(b0 - (y/w)*a1)) = w*(D\b0 - a1*w*D\y)
+
+// # We can save: gamma = w/(z-x'*D\y); beta = D\x; alpha = y/w;  
+// # a1 = (b1 - beta'*b0)*gamma
+// # a0 = w*invD.*(b0 - a1*alpha)
+
+#define updateSolutionEconomic(T) TOKENPASTE1(updateSolutionEconomic_, T)
+void updateSolutionEconomic(ValName)(vankaPrecType *mat, spValType *x, spValType *r, int n,long long* Idxs){
+	// n is blockSize
+	// mat is [beta ; invd ; alpha] as above, each of size n-1. 
+	int i,j,offset1,offset2;
+	// setting last element:
+	spValType t = r[n-1];
+	for (i=0 ; i<n-1 ; ++i){
+		t -= mat[i]*r[i];
+	}
+	t *= mat[n-1]; // multiplying schur complement
+	offset1 = n;
+	offset2 = 2*n-1;
+	x[Idxs[n-1]-1] += t;
+	for (i=0 ; i<n-1 ; ++i){
+		x[Idxs[i]-1] += mat[i+offset1]*(r[i] - mat[i+offset2]*t);
 	}
 }
 
@@ -57,46 +94,40 @@ void updateSolutionLocal(ValName)(vankaPrecType *mat, spValType *x, spValType *r
 	}
 }
 
-
-
-
-#define RelaxVankaFacesColor(T,S) TOKENPASTE(RelaxVankaFacesColor_, T, S)
-void RelaxVankaFacesColor(ValName,IndName)(spIndType *rowptr , spValType *valA ,spIndType *colA,long long *n,long long *nf,long long dim,
-							spValType *x, spValType *b, spValType *y, vankaPrecType *D,long long numit,long long includePressure,
-							long long lengthVecs, long long numCores){
-	int numColors;
-	spIndType N,blockSize;
-	if (dim==2){
-		blockSize = includePressure ? 5 : 4;
-		numColors = 4;
-		N = n[0]*n[1];
-	}else{
-		blockSize = includePressure ? 7 : 6;
-		numColors = 8;
-		N = n[0]*n[1]*n[2];
-	}
-	omp_set_num_threads(numCores);
-#pragma omp parallel shared(x,y,rowptr,valA,colA,n,nf,dim,b,D,numit)
+#define applyVankaFacesColor(T,S) TOKENPASTE(applyVankaFacesColor_, T, S)
+void applyVankaFacesColor(ValName,IndName)(spIndType *rowptr , spValType *valA ,spIndType *colA,long long *n,long long *nf,long long dim,
+							spValType *x, spValType *b, vankaPrecType *D,long long numit,long long includePressure,
+							spIndType blockSize, spIndType num_cells, long long VankaType){
+	
+	// long long lengthVecs = (dim==2) ? (nf[0]*nf[1]*(includePressure ? n[0]*n[1] : 1)) : (nf[0]*nf[1]*nf[2]*(includePressure ? n[0]*n[1]*n[2] : 1));
+	//spValType* y = NULL;
+	//spValType* y = (spValType*)malloc(lengthVecs*sizeof(spValType));
+#pragma omp parallel shared(x,rowptr,valA,colA,n,nf,dim,b,D,numit)//,y)
 {
 	int color;
-	spIndType k,i;
+	spIndType k,i,cellSizeInD;
+	cellSizeInD = (VankaType == FULL_VANKA) ? blockSize*blockSize : (3*(blockSize-1)+1);
 	long long *Idxs = (long long*)malloc(blockSize*sizeof(long long));
 	long long *i_vec = (long long*)malloc(dim*sizeof(long long));
 	spValType* local_r = (spValType*)malloc(blockSize*sizeof(spValType));
 	for (k=0 ; k < numit ; ++k){
-		//for (color=1 ; color <= numColors ; ++color){
+		//for (color=1 ; color <= numColors ; ++color){ // this is an old code that applied multicolor.
 		for (color=1 ; color <= 2 ; ++color){
 			//#pragma omp single // if we wish to make the code identical for parallel and serial, the residual has to be computed with a copy of x.
 			//{
 			//	memcpy(y,x,lengthVecs*sizeof(spValType));
 			//}
 			#pragma omp for
-			for (i=1 ; i <= N ; ++i){
+			for (i=1 ; i <= num_cells ; ++i){
 				cs2loc(i,n,dim,i_vec);
 				if (cellColor(i_vec,dim)==color){
 					getVankaVariablesOfCell(i_vec,n,nf,Idxs,includePressure,dim);
 					computeResidualAtIdx(ValName,IndName)(rowptr,valA,colA,b,x,Idxs,local_r,blockSize);
-					updateSolution(ValName)(D + (i-1)*blockSize*blockSize , x, local_r, blockSize,Idxs);
+					if (VankaType == FULL_VANKA){
+						updateSolution(ValName)(D + (i-1)*cellSizeInD , x, local_r, blockSize,Idxs);
+					}else{
+						updateSolutionEconomic(ValName)(D + (i-1)*cellSizeInD , x, local_r, blockSize,Idxs);
+					}
 				}
 			}
 		}
@@ -105,6 +136,39 @@ void RelaxVankaFacesColor(ValName,IndName)(spIndType *rowptr , spValType *valA ,
 	free(i_vec);
 	free(local_r);
 }
+return;
+}
+
+#define RelaxVankaFacesColor(T,S) TOKENPASTE(RelaxVankaFacesColor_, T, S)
+void RelaxVankaFacesColor(ValName,IndName)(spIndType *rowptr , spValType *valA ,spIndType *colA,long long *n,long long *nf,long long dim,
+							spValType *x, spValType *b, vankaPrecType *D,long long numit,long long includePressure,
+							long long VankaType, long long numCores){
+	//int numColors;
+	spIndType num_cells,blockSize;
+	if (dim==2){
+		blockSize = includePressure ? 5 : 4;
+		//numColors = 4;
+		num_cells = n[0]*n[1];
+	}else{
+		blockSize = includePressure ? 7 : 6;
+		//numColors = 8;
+		num_cells = n[0]*n[1]*n[2];
+	}
+	
+	omp_set_num_threads(numCores);
+	switch( VankaType )
+	{
+		case FULL_VANKA:
+		case ECON_VANKA:
+			applyVankaFacesColor(ValName,IndName)(rowptr , valA ,colA,n,nf,dim,
+							x, b, D,numit,includePressure,
+							blockSize, num_cells,VankaType);
+			break;
+		default:
+			printf("ERROR Vanka.h: Unknown VankaType");
+			break;
+	}
+	
 	return;
 }
 

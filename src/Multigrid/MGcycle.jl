@@ -55,7 +55,9 @@ if param.relaxType=="Jac-GMRES"
 		# x = BlockFGMRES_relaxation(AT,r,x,npresmth,MM,gmresTol,false,false,numCores, param.memRelax[level])[1];
 	end
 elseif param.relaxType == "VankaFaces"
-	x = RelaxVankaFacesColor(AT,x,b,r,D,npresmth,numCores,param.Meshes[level],param.transferOperatorType=="SystemsFacesMixedLinear");
+	x = RelaxVankaFacesColor(AT,x,b,D,npresmth,numCores,param.Meshes[level],param.transferOperatorType=="SystemsFacesMixedLinear",FULL_VANKA);
+elseif param.relaxType == "EconVankaFaces"
+	x = RelaxVankaFacesColor(AT,x,b,D,npresmth,numCores,param.Meshes[level],param.transferOperatorType=="SystemsFacesMixedLinear",ECON_VANKA);
 else
 	x = relax(AT,r,x,b,D,npresmth,numCores);
 end
@@ -114,7 +116,9 @@ if param.relaxType=="Jac-GMRES"
 		# x = BlockFGMRES_relaxation(AT,r,x,npostsmth,MM,gmresTol,false,false,numCores, param.memRelax[level])[1];
 	end
 elseif param.relaxType == "VankaFaces"
-	x = RelaxVankaFacesColor(AT,x,b,r,D,npostsmth,numCores,param.Meshes[level],param.transferOperatorType=="SystemsFacesMixedLinear");
+	x = RelaxVankaFacesColor(AT,x,b,D,npostsmth,numCores,param.Meshes[level],param.transferOperatorType=="SystemsFacesMixedLinear",FULL_VANKA);
+elseif param.relaxType == "EconVankaFaces"
+	x = RelaxVankaFacesColor(AT,x,b,D,npostsmth,numCores,param.Meshes[level],param.transferOperatorType=="SystemsFacesMixedLinear", ECON_VANKA);
 else
 	x = relax(AT,r,x,b,D,npostsmth,numCores);
 end

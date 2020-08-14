@@ -201,13 +201,83 @@ end
 return blockSize,nf;
 end
 
+
+# [ D    y ][a0] = [b0] 
+# [ x'   z ][a1] = [b1]
+# D*a0  + y*a1 = b0
+# x'*a0 + z*a1 = b1
+# 1) a1 = (b1 - x'*D\b0) / (z-x'*D\y)
+# 2) a0 = D\(b0 - y*a1) = D\b0 - a1*D\y
+
+# with w:
+# 1) a1 = w*((b1 - x'*D\b0) / (z-x'*D\y))
+# 2) a0 = w*(D\(b0 - y*a1)) = w*(D\b0 - a1*D\y)
+# which is:
+# 1) a1 = ((b1 - x'*D\b0) / ((z-x'*D\y)/w))
+# 2) a0 = w*(D\(b0 - (y/w)*a1)) = w*(D\b0 - a1*w*D\y)
+
+# We can save: gamma = w/(z-x'*D\y); beta = D\x; alpha = y/w;  
+# a1 = (b1 - beta'*b0)*gamma
+# a0 = w*invD.*(b0 - a1*alpha)
+
+
+
+
+# export testEconVanka
+# function testEconVanka()
+# n=5; 
+# D = diagm(rand(n).+ 1e-1) ;
+# x = 0.1*rand(n);
+# y = 0.1*rand(n);
+# z = rand() .+ 1e-1;
+# A = [ D x ; y' z]
+# w = 0.85;
+
+# beta = rand(n+1);
+# alpha = zeros(n+1);
+
+# gamma_test = alpha + w*(A\beta)
+
+# D = convert(Array{Float32},extractEconVankaComponents(A,w));
+
+# gamma = zeros(n+1);
+# gamma[end] = (beta[end] - dot(D[1:n],beta[1:n]))*D[n+1];
+# gamma[1:n] = (beta[1:n] .- D[2*n+2:end]*gamma[end]).*D[(n+2):(2*n+1)]
+# gamma += alpha; 
+
+# display(gamma-gamma_test);println();
+
+# gammaC = copy(alpha);
+# Idxs = collect(1:n+1); 
+# ccall((:updateSolutionEconomic_FP64,Vanka_lib),Nothing,(Ptr{Float32},Ptr{Float64},Ptr{Float64},Int16,Ptr{Int64},)
+									# ,D,gammaC ,beta,convert(Int16,n+1),Idxs);
+# display(gammaC-gamma);println();
+
+# # gamma[end] = (beta[end] - y'*(D\beta[1:n]))/(z-y'*(D\x));
+# # gamma[1:n] = D\(beta[1:n] - x*alpha[end])
+# end
+
+
+
+
+
+function extractEconVankaComponents(Acc::Array{VAL,2},w) where {VAL}
+	d = diag(Acc); z = d[end]; dinv = 1.0./d[1:end-1];
+	alpha = Acc[1:end-1,end]; 
+	beta  = dinv.*Acc[end,1:end-1];
+	z 	  = (z - dot(beta,alpha));
+	AccInv = [beta;w/z;w*dinv;alpha/w];
+	return AccInv; 
+end
+
+
 function setupVankaFacesPreconditioner(AT::SparseMatrixCSC{VAL,IND},M::RegularMesh,w::Float64,includePressure::Bool,VankaType::Int64 = FULL_VANKA) where {VAL,IND}
 n = M.n;
 vankaPrecType = toSingle(VAL);
 blockSize,nf = getVankaBlockSize(n,includePressure);
 numVankaVarPerCell = blockSize*blockSize;
 if VankaType == ECON_VANKA
-	numVankaVarPerCell = blockSize + 2*(blockSize-1);
+	numVankaVarPerCell = 3*(blockSize-1)+1;
 end
 LocalBlocks = zeros(vankaPrecType,numVankaVarPerCell,prod(M.n));
 Acc = zeros(eltype(AT),blockSize,blockSize);
@@ -219,15 +289,20 @@ for ii = 1:prod(n)
 	# Acc1 = AT[Idx_i,Idx_i];
 	# Acc1 = full(Acc1');
 	
-	if VankaType == FULL_VANKA
+	if VankaType == FULL_VANKA #
 		Acc = getDenseBlockFromAT(AT,Idx_i,Acc)
+		# AccInv = convert(Array{vankaPrecType},(w.*inv(Acc))');
+		Acc[1:end-1,1:end-1] = diagm(diag(Acc[1:end-1,1:end-1]));
 		AccInv = convert(Array{vankaPrecType},(w.*inv(Acc))');
 	elseif VankaType == KACMARZ_VANKA
 		ATi = convert(SparseMatrixCSC{ComplexF64,Int64},AT[:,Idx_i]);
 		AccInv = convert(Array{vankaPrecType},(w.*inv(Matrix(ATi'*ATi)))');
 	elseif VankaType == ECON_VANKA
 		Acc = getDenseBlockFromAT(AT,Idx_i,Acc);
-		AccInv = [diag(Acc);Acc[1:end-1,end];Acc[end,1:end-1]];
+		# Acc[1:end-1,1:end-1] = diagm(diag(Acc[1:end-1,1:end-1])./w)
+		# AccInv = convert(Array{vankaPrecType},(inv(Acc))');
+
+		AccInv = extractEconVankaComponents(Acc,w);
 	else
 		error("unknown Vanka Type.")
 	end
@@ -236,10 +311,11 @@ end
 return LocalBlocks;
 end
 
-function RelaxVankaFacesColor(AT::SparseMatrixCSC{VAL,IND},x::Array{VAL},b::Array{VAL},y::Array{VAL},
+function RelaxVankaFacesColor(AT::SparseMatrixCSC{VAL,IND},x::Array{VAL},b::Array{VAL},
 								D::Array,numit::Int64,numCores::Int64,M::RegularMesh,
-								includePressure::Bool) where {VAL,IND}
-# function RelaxVankaFaces(AT::SparseMatrixCSC,M::RegularMesh)
+								includePressure::Bool,VankaType::Int64 = FULL_VANKA) where {VAL,IND}
+	
+	
 	if toSingle(VAL)!=eltype(D)
 		error("check types.");
 	end
@@ -249,8 +325,9 @@ function RelaxVankaFacesColor(AT::SparseMatrixCSC{VAL,IND},x::Array{VAL},b::Arra
 	parallel = true;
 	if parallel==false
 		Idxs = zeros(Int64,blockSize);
-		# y_t = copy(x);
+		y = copy(x);
 		for k=1:numit
+			## this is the FULL_VANKA version.
 			for color = 1:(2^dim)
 				y[:] = x;
 				for i = 1:prod(n)
@@ -271,8 +348,7 @@ function RelaxVankaFacesColor(AT::SparseMatrixCSC{VAL,IND},x::Array{VAL},b::Arra
 			end
 		end
 	else
-		y[:] .= 0.0;
-		applyVankaFacesColor(AT,x,b,y,D,numit,numCores,n,nf,dim,convert(Int64,includePressure));
+		applyVankaFacesColor(AT,x,b,D,numit,numCores,n,nf,dim,convert(Int64,includePressure),VankaType);
 	end
 	# if norm(x - y_t) > 1e-14
 		# error("Fix RelaxVankaFacesColor in C: ",norm(x - y_t));
@@ -280,31 +356,23 @@ function RelaxVankaFacesColor(AT::SparseMatrixCSC{VAL,IND},x::Array{VAL},b::Arra
 	# println("Diff: ",norm(x-y_t));
 	return x;
 end
-# GET_VANKA(ValName,IndName)(spIndType *rowptr , spValType *valA ,spIndType *colA,long long *n,long long *nf,long long dim,
-							# spValType *x, spValType *b, spValType *y, vankaPrecType *D,long long numit,long long includePressure,
-							# long long lengthVecs, long long numCores){
-# function applyVankaFacesColor(AT::SparseMatrixCSC{VAL,IND},x::Array{VAL},b::Array{VAL},y::Array{VAL},
-								# D::Array,numit::Int64,numCores::Int64,n::Array{Int64},nf::Array{Int64},dim::Int64,includePressure::Int64)
-	# ccall((:RelaxVankaFacesColor_FP64_INT64,Vanka_lib),Nothing,(Ptr{IND},Ptr{VAL},Ptr{IND},Ptr{Int64}, Ptr{Int64}, Int64,Ptr{VAL},Ptr{VAL},Ptr{VAL},Ptr{toSingle(VAL)},Int64, Int64, Int64,Int64,),
-			# AT.colptr,AT.nzval,AT.rowval,n, nf, dim,x,b,y,D,numit,convert(Int64,includePressure),length(x),numCores);
-# end
 
-function applyVankaFacesColor(AT::SparseMatrixCSC{Float64,Int64},x::Array{Float64},b::Array{Float64},y::Array{Float64},
-								D::Array,numit::Int64,numCores::Int64,n::Array{Int64},nf::Array{Int64},dim::Int64,includePressure::Int64)
-	ccall((:RelaxVankaFacesColor_FP64_INT64,Vanka_lib),Nothing,(Ptr{Int64},Ptr{Float64},Ptr{Int64},Ptr{Int64}, Ptr{Int64}, Int64,Ptr{Float64},Ptr{Float64},Ptr{Float64},Ptr{toSingle(Float64)},Int64, Int64, Int64,Int64,),
-			AT.colptr,AT.nzval,AT.rowval,n, nf, dim,x,b,y,D,numit,includePressure,length(x),numCores);
+function applyVankaFacesColor(AT::SparseMatrixCSC{Float64,Int64},x::Array{Float64},b::Array{Float64},
+								D::Array,numit::Int64,numCores::Int64,n::Array{Int64},nf::Array{Int64},dim::Int64,includePressure::Int64,VankaType::Int64)
+	ccall((:RelaxVankaFacesColor_FP64_INT64,Vanka_lib),Nothing,(Ptr{Int64},Ptr{Float64},Ptr{Int64},Ptr{Int64}, Ptr{Int64}, Int64,Ptr{Float64},Ptr{Float64},Ptr{toSingle(Float64)},Int64, Int64, Int64,Int64,),
+			AT.colptr,AT.nzval,AT.rowval,n, nf, dim,x,b,D,numit,includePressure,VankaType,numCores);
 end
 
-function applyVankaFacesColor(AT::SparseMatrixCSC{ComplexF64,Int64},x::Array{ComplexF64},b::Array{ComplexF64},y::Array{ComplexF64},
-								D::Array,numit::Int64,numCores::Int64,n::Array{Int64},nf::Array{Int64},dim::Int64,includePressure::Int64)
-	ccall((:RelaxVankaFacesColor_FP64_INT64,Vanka_lib),Nothing,(Ptr{Int64},Ptr{ComplexF64},Ptr{Int64},Ptr{Int64}, Ptr{Int64}, Int64,Ptr{ComplexF64},Ptr{ComplexF64},Ptr{ComplexF64},Ptr{toSingle(ComplexF64)},Int64, Int64, Int64,Int64,),
-			AT.colptr,AT.nzval,AT.rowval,n, nf, dim,x,b,y,D,numit,convert(Int64,includePressure),length(x),numCores);
+function applyVankaFacesColor(AT::SparseMatrixCSC{ComplexF64,Int64},x::Array{ComplexF64},b::Array{ComplexF64},
+								D::Array,numit::Int64,numCores::Int64,n::Array{Int64},nf::Array{Int64},dim::Int64,includePressure::Int64,VankaType::Int64)
+	ccall((:RelaxVankaFacesColor_FP64_INT64,Vanka_lib),Nothing,(Ptr{Int64},Ptr{ComplexF64},Ptr{Int64},Ptr{Int64}, Ptr{Int64}, Int64,Ptr{ComplexF64},Ptr{ComplexF64},Ptr{toSingle(ComplexF64)},Int64, Int64, Int64,Int64,),
+			AT.colptr,AT.nzval,AT.rowval,n, nf, dim,x,b,D,numit,convert(Int64,includePressure),VankaType,numCores);
 end
 
-function applyVankaFacesColor(AT::SparseMatrixCSC{ComplexF32,Int64},x::Array{ComplexF32},b::Array{ComplexF32},y::Array{ComplexF32},
-								D::Array,numit::Int64,numCores::Int64,n::Array{Int64},nf::Array{Int64},dim::Int64,includePressure::Int64)
-	ccall((:RelaxVankaFacesColor_FP64_INT64,Vanka_lib),Nothing,(Ptr{Int64},Ptr{ComplexF32},Ptr{Int64},Ptr{Int64}, Ptr{Int64}, Int64,Ptr{ComplexF32},Ptr{ComplexF32},Ptr{ComplexF32},Ptr{toSingle(ComplexF32)},Int64, Int64, Int64,Int64,),
-			AT.colptr,AT.nzval,AT.rowval,n, nf, dim,x,b,y,D,numit,convert(Int64,includePressure),length(x),numCores);
+function applyVankaFacesColor(AT::SparseMatrixCSC{ComplexF32,Int64},x::Array{ComplexF32},b::Array{ComplexF32},
+								D::Array,numit::Int64,numCores::Int64,n::Array{Int64},nf::Array{Int64},dim::Int64,includePressure::Int64,VankaType::Int64)
+	ccall((:RelaxVankaFacesColor_FP64_INT64,Vanka_lib),Nothing,(Ptr{Int64},Ptr{ComplexF32},Ptr{Int64},Ptr{Int64}, Ptr{Int64}, Int64,Ptr{ComplexF32},Ptr{ComplexF32},Ptr{toSingle(ComplexF32)},Int64, Int64, Int64,Int64,),
+			AT.colptr,AT.nzval,AT.rowval,n, nf, dim,x,b,D,numit,convert(Int64,includePressure),VankaType,numCores);
 end
 
 
@@ -356,11 +424,6 @@ end
 # end
 # return param.precond; 
 # end
-
-
-
-
-
 
 
 

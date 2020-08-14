@@ -8,6 +8,10 @@
 // gcc -O3 -fopenmp -shared -fpic -DBUILD_DLL Vanka.c -o Vanka.dll
 
 
+#define FULL_VANKA 1
+#define KACMARZ_VANKA 2
+#define ECON_VANKA 3
+
 #define complex _Complex
 
 // All sorts of options so that conj will just work with the types.
