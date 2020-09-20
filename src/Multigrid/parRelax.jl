@@ -17,7 +17,7 @@ function getHybridKaczmarz(VAL::Type,IND::Type,AT::SparseMatrixCSC,Mesh::Regular
 if prod(numDomains) < numCores
 	println("*** WARNING: getHybridKaczmarz: numDomains < numCores. ***");
 end
-DDparam = getDomainDecompositionParam(Mesh,numDomains,zeros(Int64,size(numDomains)),getIndicesOfCell);
+DDparam = getDomainDecompositionParam(Mesh,numDomains,zeros(Int64,size(numDomains)),getIndicesOfCell, getJuliaSolver());
 invDiag = convert(Array{VAL,1},omega_damp./(vec(sum(conj(AT).*AT,dims=1))));
 ArrIdxs = getIndicesOfCellsArray(DDparam);
 return hybridKaczmarz{VAL,IND}(DDparam,invDiag,numCores,omega_damp,ArrIdxs,identity,numit);

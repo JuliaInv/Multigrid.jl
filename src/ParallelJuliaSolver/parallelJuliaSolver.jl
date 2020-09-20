@@ -13,6 +13,9 @@ mutable struct MySparseMatrixCSR{VAL,IND}
 	n::Int64;
 end
 
+
+export solveLinearSystem,solveLinearSystem!
+
 export getEmptySparseMatrixCSR
 function getEmptySparseMatrixCSR(VAL::Type,IND::Type,m,n,nnz)
 	return MySparseMatrixCSR{VAL,IND}(zeros(VAL,nnz),zeros(Int64,m+1),zeros(IND,nnz),m,n);

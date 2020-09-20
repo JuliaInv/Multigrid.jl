@@ -45,9 +45,9 @@ mutable struct Multigrid.CYCLEmem
 	
 Fields:
 
-	b::ArrayTypes - memory for the right-hand-side
-	r::ArrayTypes - memory for the residual
-	x::ArrayTypes - memory for the iterated solution
+	b::Array - memory for the right-hand-side
+	r::Array - memory for the residual
+	x::Array - memory for the iterated solution
 """
 mutable struct CYCLEmem{VAL}
 	b 					::Array{VAL}

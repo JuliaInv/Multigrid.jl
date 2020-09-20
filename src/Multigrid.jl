@@ -9,6 +9,7 @@ module Multigrid
 		println("hasParSpMatVec==false. ParSpMatVec has failed to build!!!!!!!");
 	end
 	
+	import jInv.LinearSolvers.JuliaSolver, jInv.LinearSolvers.getJuliaSolver 
 	import jInv.LinearSolvers.AbstractSolver
 	import jInv.LinearSolvers.solveLinearSystem!,jInv.LinearSolvers.solveLinearSystem, jInv.LinearSolvers.setupSolver
 	

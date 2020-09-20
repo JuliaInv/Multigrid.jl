@@ -409,7 +409,7 @@ end
 
 ########################### GEOMETRIC MULTIGRID STUFF ###############################
 
-function restrictCellCenteredVariables(rho::ArrayTypes,n::Array{Int64})
+function restrictCellCenteredVariables(rho::Array,n::Array{Int64})
 R,nc = getRestrictionCellCentered(n);
 rho_c = R*rho[:];
 return rho_c;
@@ -417,7 +417,7 @@ return rho_c;
 end
 
 export restrictNodalVariables
-function restrictNodalVariables(rho::ArrayTypes,n_nodes::Array{Int64})
+function restrictNodalVariables(rho::Array,n_nodes::Array{Int64})
 P,nc = getFWInterp(n_nodes,true);
 rho_c = zeros(eltype(rho),size(P,2));
 rho_c[:] = (0.5^length(n_nodes))*(P'*rho[:]);
@@ -425,7 +425,7 @@ return rho_c;
 ## TODO: make this more efficient...
 end
 
-function restrictNodalVariables2(rho::ArrayTypes,n_nodes::Array{Int64})
+function restrictNodalVariables2(rho::Array,n_nodes::Array{Int64})
 P,nc = getFWInterp(n_nodes,true);
 R1,nc1 = get1DNodeFullWeightRestriction(n_nodes[1]-1);
 R2,nc2 = get1DNodeFullWeightRestriction(n_nodes[2]-1);

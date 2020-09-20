@@ -1,4 +1,7 @@
-export getFacesStaggeredIndicesOfCellNoPressure,getFacesStaggeredIndicesOfCell,getCellCenteredIndicesOfCell,getNodalIndicesOfCell
+export getFacesStaggeredIndicesOfCellNoPressure,getFacesStaggeredIndicesOfCell,getCellCenteredIndicesOfCell,getNodalIndicesOfCell,getSubMeshOfCell
+
+export getDirichletMassNodal
+
 
 function getBoxIdxs(UpperLeftCorner::Array{Int64},BottomRightCorner::Array{Int64})
 	# this is a type of an ndgrid function
@@ -22,6 +25,10 @@ function getBoxIdxs(UpperLeftCorner::Array{Int64},BottomRightCorner::Array{Int64
 		return (vx[om, :, oo], vy[:, on, oo], vz[om, on, :])
 	end
 end
+
+##
+# This function just extends the box with overlapp only if possible.
+##
 
 function getBoxWithOverlap(UpperLeftCorner::Array{Int64},BottomRightCorner::Array{Int64},nc::Array{Int64},overlap::Array{Int64})
 	if length(nc)==2
@@ -92,45 +99,66 @@ function getSubMeshOfCell(NumCells::Array{Int64,1},overlap::Array{Int64,1},i,Mes
 		(UpperLeftCorner,BottomRightCorner) = getBoxWithOverlap(originalUpperLeftCorner,originalBottomRightCorner,nc,overlap);
 	end
 	subDomain = copy(Mesh.domain);
-	subDomain[1:2:end] = Mesh.domain[1:2:end] + (UpperLeftCorner - 1).*Mesh.h;
-	subDomain[2:2:end] = Mesh.domain[2:2:end] - (Mesh.n - BottomRightCorner).*Mesh.h;
-	subMesh = getRegularMesh(subDomain,BottomRightCorner - UpperLeftCorner + 1);
+	subDomain[1:2:end] = Mesh.domain[1:2:end] .+ (UpperLeftCorner .- 1).*Mesh.h;
+	subDomain[2:2:end] = Mesh.domain[2:2:end] .- (Mesh.n - BottomRightCorner).*Mesh.h;
+	subMesh = getRegularMesh(subDomain,BottomRightCorner - UpperLeftCorner .+ 1);
 	return subMesh
 end
 
 
 function getNodalIndicesOfCell(NumCells::Array{Int64,1},overlap::Array{Int64,1},i,nc)
-	if length(i)==3
-		error("getNodalIndicesOfCell::Fix 3D");
-	end
-	originalUpperLeftCorner = [(i[1]-1)*div(nc[1],NumCells[1]) + 1,(i[2]-1)*div(nc[2],NumCells[2]) + 1];
-	originalBottomRightCorner = originalUpperLeftCorner + [div(nc[1],NumCells[1]),div(nc[2],NumCells[2])];
-	i1 = vec(originalUpperLeftCorner[1]:originalBottomRightCorner[1]);
-	i2 = vec(originalUpperLeftCorner[2]:originalBottomRightCorner[2]);
-	I1 = i1*ones(Int64,length(i2))';
-	I2 = ones(Int64,length(i1))*i2';
-	ind = I1[:] + (I2[:].-1)*(nc[1]+1)
 	
-	if originalUpperLeftCorner[1] > 1
-		originalUpperLeftCorner[1]-=overlap[1];
+	if length(nc)==2
+		originalUpperLeftCorner = [(i[1]-1)*div(nc[1],NumCells[1]) + 1,(i[2]-1)*div(nc[2],NumCells[2]) + 1];
+		originalBottomRightCorner = originalUpperLeftCorner + [div(nc[1],NumCells[1]),div(nc[2],NumCells[2])];
+		(UpperLeftCorner,BottomRightCorner) = getBoxWithOverlap(originalUpperLeftCorner,originalBottomRightCorner,nc .+ [1;1],overlap);
+		I1,I2 = getBoxIdxs(UpperLeftCorner,BottomRightCorner);
+		indNodal = I1[:] + (I2[:].-1)*(nc[1]+1)
+	else
+		originalUpperLeftCorner = [(i[1]-1)*div(nc[1],NumCells[1]) + 1,(i[2]-1)*div(nc[2],NumCells[2]) + 1,(i[3]-1)*div(nc[3],NumCells[3]) + 1];
+		originalBottomRightCorner = originalUpperLeftCorner + [div(nc[1],NumCells[1]),div(nc[2],NumCells[2]),div(nc[3],NumCells[3])];
+		
+		# NODES X NODES X NODES
+		(UpperLeftCorner,BottomRightCorner) = getBoxWithOverlap(originalUpperLeftCorner,originalBottomRightCorner,nc + [1;1;1],overlap);
+		I1,I2,I3 = getBoxIdxs(UpperLeftCorner,BottomRightCorner);
+		indNodal = I1[:] + (I2[:].-1)*(nc[1]+1) + (I3[:].-1)*((nc[1]+1)*(nc[1]+1));
 	end
-	if originalUpperLeftCorner[2] > 1
-		originalUpperLeftCorner[2]-=overlap[2];
-	end
-	if originalBottomRightCorner[1] < nc[1]+1
-		originalBottomRightCorner[1]+=overlap[1];
-	end
-	if originalBottomRightCorner[2] < nc[2]+1
-		originalBottomRightCorner[2]+=overlap[2];
-	end
-	i1 = vec(originalUpperLeftCorner[1]:originalBottomRightCorner[1]);
-	i2 = vec(originalUpperLeftCorner[2]:originalBottomRightCorner[2]);
-	I1 = i1*ones(Int64,length(i2))';
-	I2 = ones(Int64,length(i1))*i2';
-	indOver = I1[:] + (I2[:].-1)*(nc[1]+1)
 	
-	return indOver
+
+	return indNodal
 end
+
+
+function getDirichletMassNodal(NumCells::Array{Int64},overlap::Array{Int64},i::Array{Int64},nc::Array{Int64})
+	if length(nc)==2
+		originalUpperLeftCorner = [(i[1]-1)*div(nc[1],NumCells[1]) + 1,(i[2]-1)*div(nc[2],NumCells[2]) + 1];
+		originalBottomRightCorner = originalUpperLeftCorner + [div(nc[1],NumCells[1]),div(nc[2],NumCells[2])];
+		(UpperLeftCorner,BottomRightCorner) = getBoxWithOverlap(originalUpperLeftCorner,originalBottomRightCorner,nc .+ [1;1],overlap);
+		size = BottomRightCorner-UpperLeftCorner.+1;
+		mass = zeros(Float64,tuple(size...));
+		if UpperLeftCorner[1]>1
+			mass[1,:].=1.0;
+		end
+		if UpperLeftCorner[2]>1
+			mass[:,1].=1.0;
+		end
+		if BottomRightCorner[1] < nc[1]+1
+			mass[end,:].=1.0;
+		end
+		if BottomRightCorner[2] < nc[2]+1
+			mass[:,end].=1.0;
+		end
+	else
+		error("Not fully implemented")
+		# originalUpperLeftCorner = [(i[1]-1)*div(nc[1],NumCells[1]) + 1,(i[2]-1)*div(nc[2],NumCells[2]) + 1,(i[3]-1)*div(nc[3],NumCells[3]) + 1];
+		# originalBottomRightCorner = originalUpperLeftCorner + [div(nc[1],NumCells[1]),div(nc[2],NumCells[2]),div(nc[3],NumCells[3])];
+		# # NODES X NODES X NODES
+		# (UpperLeftCorner,BottomRightCorner) = getBoxWithOverlap(originalUpperLeftCorner,originalBottomRightCorner,nc + [1;1;1],overlap);
+	end
+	return mass;
+end
+
+
 
 function getFacesStaggeredIndicesOfCell(NumCells::Array{Int64},overlap::Array{Int64},i::Array{Int64},nc::Array{Int64})
 	indOver = [];
@@ -202,50 +230,15 @@ function getFacesStaggeredIndicesOfCellNoPressure(NumCells::Array{Int64},overlap
 		# NODES X CELLS
 		(UpperLeftCorner,BottomRightCorner) = getBoxWithOverlap(originalUpperLeftCorner,originalBottomRightCorner+ [1;0],nc + [1;0],overlap);
 		I1,I2 = getBoxIdxs(UpperLeftCorner,BottomRightCorner);
-		# w1 = ones(BottomRightCorner[1] - UpperLeftCorner[1] + 1);
-		# if originalUpperLeftCorner[1] > 1 
-			# w1[1:(originalUpperLeftCorner[1] - UpperLeftCorner[1])] = 0.0;
-			# w1[(originalUpperLeftCorner[1] - UpperLeftCorner[1])+1] = 0.5;
-		# end
-		# if originalBottomRightCorner[1] < nc[1]
-			# w1[end:-1:((end+1)-(BottomRightCorner[1] - originalBottomRightCorner[1]))] = 0.0;
-			# w1[end+1 - (BottomRightCorner[1] - originalBottomRightCorner[1])] = 0.5;
-		# end
-		# w2 = ones(1,BottomRightCorner[2] - UpperLeftCorner[2] + 1);
-		# if originalUpperLeftCorner[2] > 1 
-			# w2[1:(originalUpperLeftCorner[2] - UpperLeftCorner[2])] = 0.0;
-		# end
-		# if originalBottomRightCorner[2] < nc[2]
-			# w2[end:-1:((end+1)-(BottomRightCorner[2] - originalBottomRightCorner[2]))] = 0.0;
-		# end
-		# W1 = w1*w2;
-		
 		indNC = I1[:] .+ (I2[:].-1)*(nc[1]+1)
 	
 		# CELLS X NODES
 		(UpperLeftCorner,BottomRightCorner) = getBoxWithOverlap(originalUpperLeftCorner,originalBottomRightCorner+ [0;1],nc + [0;1],overlap);
 		I1,I2 = getBoxIdxs(UpperLeftCorner,BottomRightCorner);
 		indCN = I1[:] .+ (I2[:].-1)*(nc[1])
-		# w1 = ones(BottomRightCorner[1] - UpperLeftCorner[1] + 1);
-		# if originalUpperLeftCorner[1] > 1 
-			# w1[1:(originalUpperLeftCorner[1] - UpperLeftCorner[1])] = 0.0;
-		# end
-		# if originalBottomRightCorner[1] < nc[1]
-			# w1[end:-1:((end+1)-(BottomRightCorner[1] - originalBottomRightCorner[1]))] = 0.0;
-		# end
-		# w2 = ones(1,BottomRightCorner[2] - UpperLeftCorner[2] + 1);
-		# if originalUpperLeftCorner[2] > 1 
-			# w2[1:(originalUpperLeftCorner[2] - UpperLeftCorner[2])] = 0.0;
-			# w2[(originalUpperLeftCorner[2] - UpperLeftCorner[2])+1] = 0.5;
-		# end
-		# if originalBottomRightCorner[2] < nc[2]
-			# w2[end:-1:((end+1)-(BottomRightCorner[2] - originalBottomRightCorner[2]))] = 0.0;
-			# w2[end+1 - (BottomRightCorner[2] - originalBottomRightCorner[2])] = 0.5;
-		# end
-		# W2 = w1*w2;
+		
 		indOver = [indNC; indCN .+ nf[1]];
 		
-		# weightOver = [W1[:];W2[:]];
 	else
 		nf = [prod(nc + [1; 0 ; 0]),prod(nc + [0; 1 ; 0]),prod(nc + [0; 0 ; 1])];
 		originalUpperLeftCorner = [(i[1]-1)*div(nc[1],NumCells[1]) + 1,(i[2]-1)*div(nc[2],NumCells[2]) + 1,(i[3]-1)*div(nc[3],NumCells[3]) + 1];
@@ -267,9 +260,11 @@ function getFacesStaggeredIndicesOfCellNoPressure(NumCells::Array{Int64},overlap
 		indCCN = I1[:] .+ (I2[:].-1)*(nc[1]) + (I3[:].-1)*(nc[1]*nc[2]);
 		
 		indOver = [indNCC; indCNC .+ nf[1] ; indCCN .+ (nf[1]+nf[2]) ];
-		# weightOver = 0; error("TBD");
+
 	end
-	
-	
-	return indOver #,weightOver
+	return indOver 
 end
+
+
+
+
