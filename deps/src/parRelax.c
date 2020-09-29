@@ -5,6 +5,18 @@
 #include <complex.h>
 
 
+
+#define ValName CFP64
+#define IndName INT64
+#define spIndType long long
+#define spValType double complex
+#include"parRelax.h"
+#undef spIndType
+#undef spValType
+#undef ValName
+#undef IndName
+
+
 #define ValName CFP32
 #define IndName INT64
 #define spIndType long long
