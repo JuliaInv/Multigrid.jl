@@ -53,13 +53,16 @@ println("****************************** transposeHierarchy *********************
 transposeHierarchy(MG,true);
 
 
+println("****************************** replaceMatrixHierarchy *********************************");
+replaceMatrixInHierarchy(MG,Ar,true);
+
 println("****************************** GMRES preconditioned with SA-AMG: (only one rhs...) ******************************")
 x[:] .= 0.0;
 b1 = vec(b[:,1]);
 x1 = zeros(N);
 MG = getMGparam(Float64,Int64,levels,numCores,maxIter,relativeTol,relaxType,relaxParam,relaxPre,relaxPost,cycleType,"GMRES");
 SA_AMGsetup(Ar,MG,true,1,true);
-solveGMRES_MG(Ar,MG,b1,x1,true,2)
+solveGMRES_MG(Ar,MG,b1,x1,true,2,true)
 @test norm(Ar*x1 - b1) < 0.001;
 println("****************************** Classical AMG *********************************");
 x1 = zeros(N);
@@ -77,7 +80,7 @@ println("****************************** GMRES preconditioned with SA-AMG: (multi
 MG = getMGparam(Float64,Int64,levels,numCores,maxIter,relativeTol,"Jac-GMRES",relaxParam,relaxPre,relaxPost,'K',coarseSolveType);
 SA_AMGsetup(Ar,MG,true,size(b,2),true);
 x[:] .= 0.0;
-solveGMRES_MG(Ar,MG,b,x,true,2)
+solveGMRES_MG(Ar,MG,b,x,true,2,true)
 
 Ar = 0;
 b = 0;

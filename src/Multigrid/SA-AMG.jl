@@ -17,18 +17,15 @@ end
 T_time = 0;	
 N = size(AT,2);
 As[1] = AT;
-relaxPrecs = Array{SparseMatrixCSC{VAL,IND}}(undef,param.levels-1);
+relaxPrecs = Array{Array{VAL}}(undef,param.levels-1);
 Cop = nnz(AT);
 for l = 1:(param.levels-1)
 	if verbose
 		T_time = time_ns();
 	end
     AT = As[l];
-    if param.relaxType=="Jac" || param.relaxType=="Jac-GMRES"
-		d = param.relaxParam./diag(AT);
-		relaxPrecs[l] = sparse(Diagonal(d));#d;# here we need to take the conjugate for the SpMatVec, but we give At instead of A so it cancels
-	elseif param.relaxType=="SPAI"
-		relaxPrecs[l] = sparse(Diagonal(param.relaxParam*getSPAIprec(AT))); # here we need to take the conjugate for the SpMatVec, but we give At instead of A so it cancels
+    if param.relaxType=="Jac" || param.relaxType=="Jac-GMRES" || param.relaxType=="SPAI"
+		relaxPrecs[l] = getRelaxPrec(AT,VAL,param.relaxType,param.relaxParam,[],false);
 	else
 		error("Unknown relaxation type !!!!");
 	end
@@ -44,7 +41,7 @@ for l = 1:(param.levels-1)
 		relaxPrecs = relaxPrecs[1:l-1];
 		break;
 	else
-		DAT = AT*relaxPrecs[l];
+		DAT = AT*spdiagm(0=>relaxPrecs[l]); # Julia's .* doesn't work for this multiplication. Only from the right.
 		rhoDAT = min(norm(DAT,1),norm(DAT,Inf));
 		PT = P0 - (1.33/rhoDAT)*P0*DAT;
 		Rs[l] = sparse(PT'); # this is becasue we hold the transpose of the matrices and P = R' anyway here....

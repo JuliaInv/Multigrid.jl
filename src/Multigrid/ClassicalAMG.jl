@@ -16,7 +16,7 @@ end
 
 N = size(AT,2);
 As[1] = AT;
-relaxPrecs = Array{SparseMatrixCSC{VAL,IND}}(undef, param.levels-1);
+relaxPrecs = Array{Vector{VAL}}(undef, param.levels-1);
 Cop = nnz(AT);
 time = 0;
 for l = 1:(param.levels-1)
@@ -24,14 +24,14 @@ for l = 1:(param.levels-1)
 		time = time_ns();
 	end
 	AT = As[l];
-	if param.relaxType=="Jac" || param.relaxType=="Jac-GMRES"
-		d = param.relaxParam./diag(AT);
-		relaxPrecs[l] = sparse(Diagonal(d));#d;# here we need to take the conjugate for the SpMatVec, but we give At instead of A so it cancels
-	elseif param.relaxType=="SPAI"
-		relaxPrecs[l] = sparse(Diagonal(param.relaxParam*getSPAIprec(AT))); # here we need to take the conjugate for the SpMatVec, but we give At instead of A so it cancels
+	if param.relaxType=="Jac" || param.relaxType=="Jac-GMRES" || param.relaxType=="SPAI"
+		relaxPrecs[l] = getRelaxPrec(AT,VAL,param.relaxType,param.relaxParam,[],false);
 	else
 		error("Unknown relaxation type !!!!");
 	end
+	
+	
+	
 	S = getStrengthMatrix(AT,param.strongConnParam, N);
 	#println("Time of first coloring pass:")
 	coloring = getColoringFirst(S, N)

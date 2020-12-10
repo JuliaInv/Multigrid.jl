@@ -16,7 +16,7 @@ levels      = 4;
 numCores 	= 8; 
 maxIter     = 5;
 relativeTol = 1e-10;
-relaxType   = "Jac";
+relaxType   = "Jac-GMRES";
 relaxParam  = 0.75;
 relaxPre 	= 1;
 relaxPost   = 1;
@@ -35,25 +35,24 @@ x = zeros(N,2);
 MGsetup(Ar,Mr,MG,size(b,2),true);
 
 println("****************************** Stand-alone GMG RAP for Poisson: ******************************")
-solveMG(MG,b,x,true);
+x = solveMG(MG,b,x,true)[1];
+println("*******************Outside: ",norm(Ar*x - b)/norm(b))
 @test norm(Ar*x - b) < 0.005;
 println("****************************** Stand-alone GMG RAP : iterative coarsest ***********************")
-coarseSolveType = "BiCGSTAB"
+coarseSolveType = "GMRES"
 MG = getMGparam(Float64,Int64,levels,numCores,maxIter,relativeTol,relaxType,relaxParam,relaxPre,relaxPost,cycleType,coarseSolveType,0.5,0.0);
 MGsetup(Ar,Mr,MG,size(b,2),true);
 solveMG(MG,b,x,true);
 @test norm(Ar*x - b) < 0.001;
-println("****************************** GMRES preconditioned with GMG: (only one rhs...) ******************************")
+println("****************************** GMRES preconditioned with GMG, Jac-GMRES relaxation: ******************************")
 x[:] .= 0.0
-b = vec(b[:,1]);
-x = vec(x[:,1]);
 relaxType   = "Jac-GMRES";
 coarseSolveType = "NoMUMPS"
 MG = getMGparam(Float64,Int64,levels,numCores,maxIter,relativeTol,relaxType,relaxParam,relaxPre,relaxPost,cycleType,coarseSolveType,0.5,0.0);
 MGsetup(Ar,Mr,MG,size(b,2),true);
-solveGMRES_MG(Ar,MG,b,x,true,2)
+x = solveGMRES_MG(Ar,MG,b,x,true,10,true)[1];
+println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Outside: ",norm(Ar*x - b)/norm(b))
 @test norm(Ar*x - b) < 0.001;
-
 
 println("****************************** 3D Poisson ******************************")
 

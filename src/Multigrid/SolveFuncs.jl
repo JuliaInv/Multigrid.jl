@@ -78,8 +78,8 @@ end
 function solveCG_MG(AT::SparseMatrixCSC,param::MGparam{VAL,IND},b::Array,x0::Array,verbose::Bool = false) where {VAL,IND}
 	return solveCG_MG(getAfun(AT,zeros(eltype(b),size(b)),param.numCores),param,b,x0,verbose);
 end
-function solveGMRES_MG(AT::SparseMatrixCSC,param::MGparam{VAL,IND},b::Array,x0::Array,verbose::Bool = false,inner=3) where {VAL,IND}
-	return solveGMRES_MG(getAfun(AT,zeros(eltype(b),size(b)),param.numCores),param,b,x0,verbose,inner);
+function solveGMRES_MG(AT::SparseMatrixCSC,param::MGparam{VAL,IND},b::Array,x0::Array,flexible::Bool,inner::Int64,verbose::Bool = false) where {VAL,IND}
+	return solveGMRES_MG(getAfun(AT,zeros(eltype(b),size(b)),param.numCores),param,b,x0,flexible,inner,verbose);
 end
 
 
@@ -118,7 +118,7 @@ end
 
 
 
-function solveGMRES_MG(Afun::Function,param::MGparam{VAL,IND},b::Array,x0::Array,verbose::Bool = false,inner=3,flexible = false) where {VAL,IND}
+function solveGMRES_MG(Afun::Function,param::MGparam{VAL,IND},b::Array,x0::Array,flexible::Bool,inner::Int64,verbose::Bool = false) where {VAL,IND}
 MMG = getMultigridPreconditioner(param,b,verbose);
 out = -2;
 if verbose

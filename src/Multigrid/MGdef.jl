@@ -3,6 +3,7 @@ using KrylovMethods
 using Multigrid.DomainDecomposition
 
 import jInv.LinearSolvers.copySolver;
+import jInv.LinearSolvers.AbstractSolver;
 
 export MGparam;
 export getMGparam, MGsetup, clear!
@@ -12,7 +13,7 @@ export multilevelOperatorConstructor, getMultilevelOperatorConstructor
 
 include("SpMatMul.jl");
 include("FGMRES.jl");
-#include("BlockFGMRES.jl");
+
 
 """
 mutable struct Multigrid.multilevelOperatorConstructor
@@ -186,27 +187,13 @@ if param.coarseSolveType=="MUMPS"
 		destroyMUMPS(param.LU);
 		param.LU = [];
 	end
+elseif isa(param.LU,AbstractSolver)
+	clear!(param.LU);
 else
 	param.LU = [];
 end
 return;
 end
-
-# function getMGType(param::MGparam,btype::DataType)
-# if btype <: Real
-	# return param.singlePrecision ? Float32 : Float64;
-# else
-	# return param.singlePrecision ? Complex{Float32} : Complex{Float64};
-# end
-# end
-
-# function getMGType(param::MGparam,b::Array)
-# if eltype(b) <: Real
-	# return param.singlePrecision ? Float32 : Float64;
-# else
-	# return param.singlePrecision ? Complex{Float32} : Complex{Float64};
-# end
-# end
 
 function hierarchyExists(param::MGparam{VAL,IND}) where {VAL,IND}
 return length(param.As) > 0;

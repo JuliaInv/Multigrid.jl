@@ -12,7 +12,6 @@ As 			= Array{SparseMatrixCSC}(undef,param.levels);
 Meshes  	= Array{RegularMesh}(undef,param.levels); 
 relaxPrecs 	= Array{Any}(undef,param.levels);
 
-#MGType = getMGType(param,rhsType);
 relaxParamArr = zeros(param.levels);
 
 if length(param.relaxParam)==1
@@ -71,23 +70,9 @@ for l = 1:(param.levels-1)
 		end
 	end
 
-	if param.relaxType=="Jac" || param.relaxType=="Jac-GMRES"
-		d = relaxParamArr[l]./diag(AT);
-		d = sparse(Diagonal(d));
-		if param.singlePrecision
-			relaxPrecs[l] = convert(SparseMatrixCSC{VAL,IND},d);# here we need to take the conjugate for the SpMatVec, but we give At instead of A so it cancels
-		else
-			relaxPrecs[l] = d;
-		end
-	elseif param.relaxType=="SPAI"
-		relaxPrecs[l] = sparse(Diagonal(relaxParamArr[l]*getSPAIprec(AT))); # here we need to take the conjugate for the SpMatVec, but we give At instead of A so it cancels
-	elseif param.relaxType=="VankaFaces"
-		relaxPrecs[l] = setupVankaFacesPreconditioner(AT,Meshes[l], relaxParamArr[l], withCellsBlock, FULL_VANKA);
-	elseif param.relaxType=="EconVankaFaces"
-		relaxPrecs[l] = setupVankaFacesPreconditioner(AT,Meshes[l], relaxParamArr[l], withCellsBlock, ECON_VANKA);
-	else
-		error("Unknown relaxation type !!!!");
-	end
+	relaxPrecs[l] = getRelaxPrec(AT,VAL,param.relaxType,relaxParamArr[l],Meshes[l],withCellsBlock);
+	
+	
 	if param.singlePrecision
 		PT = convert(SparseMatrixCSC{real(VAL),IND},PT);
 		RT = convert(SparseMatrixCSC{real(VAL),IND},RT);
@@ -145,6 +130,27 @@ param.doTranspose = 0;
 return param;
 end
 
+
+
+function getRelaxPrec(AT,VAL::Type,relaxType,relaxParam=1.0,Mesh_l=[],withCellsBlock=false)
+if relaxType=="Jac" || relaxType=="Jac-GMRES"
+	d = Vector(conj(relaxParam./diag(AT)));
+	return convert(Array{VAL},d);
+elseif relaxType=="SPAI"
+	return convert(Array{VAL},conj(relaxParam*getSPAIprec(AT))); 
+elseif relaxType=="VankaFaces"
+	return setupVankaFacesPreconditioner(AT,Mesh_l, relaxParam, withCellsBlock, FULL_VANKA);
+elseif relaxType=="EconVankaFaces"
+	return setupVankaFacesPreconditioner(AT,Mesh_l, relaxParam, withCellsBlock, ECON_VANKA);
+else
+	error("Unknown relaxation type !!!!");
+end
+end
+
+
+
+
+
 function adjustMemoryForNumRHS(param::MGparam{VAL,IND},nrhs::Int64 = 1,verbose::Bool=false) where {VAL,IND}
 if length(param.As)==0
 	error("The Hierarchy is empty - run a setup first.")
@@ -191,23 +197,10 @@ for l = 1:(param.levels-1)
 	memCycle[l] = getCYCLEmem(N,nrhs,VAL,true);
 	if param.relaxType=="Jac-GMRES"
 		maxRelax = max(param.relaxPre(l),param.relaxPost(l));
-		if nrhs == 1
-			memRelax[l] = getFGMRESmem(N,true,VAL,maxRelax,1);
-		else
-			# memRelax[l] = getBlockFGMRESmem(N,nrhs,false,VAL,maxRelax);
-			# memRelax[l] = getFGMRESmem(N,false,VAL,maxRelax,nrhs);
-			memRelax[l] = getFGMRESmem(N,true,VAL,maxRelax,1);
-		end
+		memRelax[l] = getFGMRESmem(N,VAL,maxRelax,nrhs);
 	end
-	
 	if l > 1 && param.cycleType=='K'
-		if nrhs == 1
-			memKcycle[l-1] = getFGMRESmem(N,true,VAL,2,1);
-		else
-			# memKcycle[l-1] = getBlockFGMRESmem(N,nrhs,true,MGType,2);
-			memKcycle[l-1] = getFGMRESmem(N,true,VAL,2,nrhs);
-		end
-		
+		memKcycle[l-1] = getFGMRESmem(N,VAL,2,nrhs);
 	end
 end
 memCycle[end] = getCYCLEmem(size(param.As[end],2),nrhs,VAL,false); # no need for residual on the coarsest level...
@@ -237,36 +230,26 @@ for l = 1:(param.levels-1)
 		T_time = time_ns();
 	end
     AT = param.As[l];
-	
-	if param.relaxType=="Jac" || param.relaxType=="Jac-GMRES"
-		d = relaxParamArr[l]./diag(AT);
-		d = spdiagm(0=>d);
-		param.relaxPrecs[l] = d;
-		if param.singlePrecision
-			param.relaxPrecs[l] = convert(SparseMatrixCSC{VAL,IND},d);# here we need to take the conjugate for the SpMatVec, but we give At instead of A so it cancels
-		end
-		
-	elseif param.relaxType=="SPAI"
-		d = spdiagm(d);
-	elseif param.relaxType=="VankaFaces"
-		param.relaxPrecs[l] = getVankaFacesPreconditioner(AT,Meshes[l],relaxParamArr[l],withCellsBlock);
-	else
-		error("Unknown relaxation type !!!!");
+	withCellsBlock = false;
+	if param.transferOperatorType=="SystemsFacesMixedLinear"
+		withCellsBlock = true;
 	end
+	Mesh_l = isempty(param.Meshes) ? [] : param.Meshes[l];
+	param.relaxPrecs[l] = getRelaxPrec(AT,VAL,param.relaxType,relaxParamArr[l],Mesh_l,withCellsBlock);
+	
 	Act = param.Ps[l]*AT*param.Rs[l];
 	param.As[l+1] = Act;
 	Cop = Cop + nnz(Act);
 	if verbose; println("MG setup: took:",(time_ns() - T_time)/1e+9); end;
 end
 if verbose 
-	tic()
+	T_time = time_ns();
 	println("MG setup: Operator complexity = ",Cop/nnz(param.As[1]));
 end
 
 defineCoarsestAinv(param,param.As[end]);
-
 if verbose 
-	println("MG setup coarsest ",param.coarseSolveType,":  done LU in ",toq());
+	println("MG setup coarsest ",param.coarseSolveType,": done coarsest in ",(time_ns()-T_time)/1e+9);
 end
 param.doTranspose = 0;
 return;
@@ -323,20 +306,17 @@ end
 
 
 export defineCoarsestAinv;
-function defineCoarsestAinv(param::MGparam,AT::SparseMatrixCSC)
+function defineCoarsestAinv(param::MGparam{VAL,IND},AT::SparseMatrixCSC{VAL,IND}) where {VAL,IND}
 if isa(param.LU,AbstractSolver)
 	println("Using AbstractSolver");
 	param.LU = setupSolver(AT,param.LU);
 else
 	if param.coarseSolveType == "MUMPS"
 		param.LU = factorMUMPS(AT',0,0);
-	elseif param.coarseSolveType == "BiCGSTAB" || param.coarseSolveType == "GMRES"
-		d = sparse(Diagonal(param.relaxParam./diag(AT)));
-		param.LU = d;
-		if param.singlePrecision
-			param.LU = convert(SparseMatrixCSC{spValType,spIndType},d);# here we need to take the conjugate for the SpMatVec, but we give At instead of A so it cancels	
-		end
+	elseif param.coarseSolveType == "GMRES"
+		param.LU = convert(Array{VAL},Vector(conj(param.relaxParam./diag(AT))));
 	elseif param.coarseSolveType == "VankaFaces"
+		println("This code is not tested!!!");
 		mixedFormulation = false;
 		if param.transferOperatorType=="SystemsFacesMixedLinear"
 			mixedFormulation = true;
@@ -401,9 +381,9 @@ return P,nc
 end
 
 
-function getSPAIprec(A::SparseMatrixCSC)
-s = vec(sum(real(A).^2,dims=2) + sum(imag(A).^2,dims=2));
-Q = conj(diag(A))./s;
+function getSPAIprec(AT::SparseMatrixCSC)
+s = vec(sum(real(AT).^2,dims=2) + sum(imag(AT).^2,dims=2));
+Q = Vector(conj(diag(AT))./s);
 end
 
 

@@ -100,30 +100,30 @@ solveCG_MG(Ar,MG,b,x,true)
 println("TODO: see why the code below doesn't work.")
 clear!(MG)
 
-# println("************************************************* GMG for Elasticity 3D  using Vanka ******************************************************");
+println("************************************************* GMG for Elasticity 3D  using Vanka ******************************************************");
 
-# domain = [0.0, 1.0, 0.0, 1.0,0.0,1.0];
-# n = [16,16,16];
-# Mr = getRegularMesh(domain,n)
-# mu = 1.0*ones(prod(Mr.n));
-# lambda = 10.0.*mu;
+domain = [0.0, 1.0, 0.0, 1.0,0.0,1.0];
+n = [16,16,16];
+Mr = getRegularMesh(domain,n)
+mu = 1.0*ones(prod(Mr.n));
+lambda = 10.0.*mu;
 
-# Hparam = ElasticityParam(Mr,lambda,mu,true);
+Hparam = ElasticityParam(Mr,lambda,mu,true);
 
-# MGsetup(getMultilevelOperatorConstructor(Hparam,getOperator,restrictParam),Mr,MG,size(b,1),true);
-# Ar = MG.As[1]; # It is actually transposed, but matrix is symmetric.
-# N = size(Ar,2);
-# b = Ar*rand(N); b = b/norm(b);
-# x = zeros(N);
+MGsetup(getMultilevelOperatorConstructor(Hparam,getOperator,restrictParam),Mr,MG,size(b,1),true);
+Ar = MG.As[1]; # It is actually transposed, but matrix is symmetric.
+N = size(Ar,2);
+b = Ar*rand(N); b = b/norm(b);
+x = zeros(N);
 
 
-# println("****************************** Stand-alone 3D GMG: ******************************")
-# solveMG(MG,b,x,true);
-# @test norm(Ar*x - b) < 0.05;
-# println("****************************** 3D GMG + CG: ******************************")
-# x[:].=0.0;
-# solveCG_MG(Ar,MG,b,x,true)
-# @test norm(Ar*x - b) < 0.01;
+println("****************************** Stand-alone 3D GMG: ******************************")
+solveMG(MG,b,x,true);
+@test norm(Ar*x - b) < 0.05;
+println("****************************** 3D GMG + CG: ******************************")
+x[:].=0.0;
+solveCG_MG(Ar,MG,b,x,true)
+@test norm(Ar*x - b) < 0.01;
 
 
 

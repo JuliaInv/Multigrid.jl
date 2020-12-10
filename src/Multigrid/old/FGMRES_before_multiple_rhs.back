@@ -14,7 +14,7 @@ mem.V[:].=0.0;
 mem.Z[:].=0.0;
 end
 
-function getFGMRESmem(n::Int64,T::Type,k::Int64,m::Int64=1)
+function getFGMRESmem(n::Int64,flexible::Bool,T::Type,k::Int64,m::Int64=1)
 ## Effectively we do not use v_prec and Az.
 v_prec = zeros(T,0);
 Az = zeros(T,0);
@@ -25,7 +25,12 @@ else
 	Az = zeros(T,n,m);
 	v_prec = zeros(T,n,m);
 end
-return FGMRESmem{T}(v_prec,Az,zeros(T,n*m,k),zeros(T,n*m,k));
+
+if flexible 
+	return FGMRESmem{T}(v_prec,Az,zeros(T,n,k*m),zeros(T,n,k*m));
+else
+	return FGMRESmem{T}(v_prec,Az,zeros(T,n,k*m),zeros(T,0));
+end
 end
 
 
@@ -37,24 +42,18 @@ function isempty(mem::FGMRESmem{T}) where T
 return size(mem.V,1)==0;
 end
 
-function FGMRES_relaxation(AT::SparseMatrixCSC,r0::Array{T},x0::Array{T},inner::Int64,prec::Function,TOL::Float64,
-                 verbose::Bool,numCores::Int64, mem::FGMRESmem{T} =  getEmptyFGMRESmem(T)) where T
-return FGMRES_relaxation(getAfun(AT,zeros(T,size(r0)),numCores),r0,x0,inner,prec,TOL,verbose,numCores,mem);
+function FGMRES_relaxation(AT::SparseMatrixCSC,r0::Vector{T},x0::Vector{T},inner::Int64,prec::Function,TOL::Float64,
+                 verbose::Bool,flexible::Bool,numCores::Int64, mem::FGMRESmem{T} =  getEmptyFGMRESmem(T)) where T
+return FGMRES_relaxation(getAfun(AT,zeros(T,size(r0)),numCores),r0,x0,inner,prec,TOL,verbose,flexible,numCores,mem);
 end
 
+function FGMRES_relaxation(Afun::Function,r0::Vector{T},x0::Vector{T},inner::Int64,prec::Function,TOL::Float64,
+                 verbose::Bool,flexible::Bool,numCores::Int64, mem::FGMRESmem{T} = getEmptyFGMRESmem(T)) where T
 
-
-
-function FGMRES_relaxation(Afun::Function,r0::Array{T},x0::Array{T},inner::Int64,prec::Function,TOL::Float64,verbose::Bool,
-                 numCores::Int64, mem::FGMRESmem{T} = getEmptyFGMRESmem(T)) where T
-
-# For multiple right hand sides we apply a trick: we consider one huge block diagonal system for Ax_i = b_i
-
-m = size(r0,2);
-n = size(r0,1);
+n = length(r0);
 if isempty(mem)
-	# println("WARNING: Allocating memory in GMRES: ",n=,"n",", m = ",m)
-	mem = getFGMRESmem(n,T,inner,m);
+	println("WARNING: Allocating memory in GMRES")
+	mem = getFGMRESmem(n,true,eltype(r0),inner);
 else
     resetMem(mem);
 	if size(mem.V,2)!= inner
@@ -81,19 +80,17 @@ rnorms = zeros(inner);
 
 for j = 1:inner
 	if j==1
-		z = prec(r0); 
+		z = prec(r0); # here unfortunately we have an allocation....
 	else
 		z = prec(w);
 	end
-	
-	Z[:,j] .= reshape(z,n*m); # no memory problem with this line....
+	Z[:,j] = z; # no memory problem with this line....
 	
 	w = Afun(z); # w = A'*z;# w = SpMatMul(A,z,w,numCores);
+	AZ[:,j] = w;  # no memory problem with this line....
+
+	BLAS.gemv!('C', constOne, AZ, w,constZero,t);
 	
-	AZ[:,j] .= reshape(w,n*m);  # no memory problem with this line....
-
-	BLAS.gemv!('C', constOne, AZ, reshape(w,n*m),constZero,t);
-
 	xi[j] = dot(w,r0);
 	
 	H[:,j] = t;
@@ -116,10 +113,7 @@ for j = 1:inner
         break;
     end
 end
-
-
-BLAS.gemv!('N', constOne, Z, t,constZero,reshape(w,n*m)); # w = Z*t  #This is the correction that corresponds to the residual. 
-
+BLAS.gemv!('N', constOne, Z, t,constZero,w); # w = Z*y  #This is the correction that corresponds to the residual. 
 addVectors(constOne,w,x0);
 
 return x0,rnorms; # w is the correction vector;
