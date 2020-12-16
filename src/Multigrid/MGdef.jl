@@ -115,6 +115,7 @@ end
 
 const spValType = ComplexF32
 
+include("GeometricTransferOperators.jl")
 include("MGsetup.jl");
 include("SA-AMG.jl");
 include("MGcycle.jl");
