@@ -99,6 +99,24 @@ void applyLUsolve_CFP32_UINT32(long long *rowptrL , VAL_T *valL ,IND_T *colL, lo
 #undef IND_T
 #undef VAL_T
 
+#define IND_T long long
+#define VAL_T float complex 
+EXTERNC void applyLUsolve_CFP32_INT64(long long *rowptrL , VAL_T *valL ,IND_T *colL,long long *rowptrU , VAL_T *valU ,IND_T *colU,
+							IND_T *p, IND_T *q,  long long *n, long long *nnz, 
+						    VAL_T *x, VAL_T *b, long long num_LUs, long long num_rhs, long long numCores, long long jointCores, long long doTranspose);
+void applyLUsolve_CFP32_INT64(long long *rowptrL , VAL_T *valL ,IND_T *colL, long long *rowptrU , VAL_T *valU ,IND_T *colU,
+							IND_T *p, IND_T *q,  long long *n, long long *nnz, 
+						    VAL_T *x, VAL_T *b, long long num_LUs, long long num_rhs, long long numCores, long long jointCores, long long doTranspose){
+	if (doTranspose==0){
+		applyLUsolve<IND_T,VAL_T>(rowptrL , valL ,colL,rowptrU , valU ,colU,p,q,n,nnz,x,b,num_LUs,num_rhs,numCores,jointCores);
+	}else{
+		applyLUsolveTrans<IND_T,VAL_T>(rowptrL , valL ,colL,rowptrU , valU ,colU,p,q,n,nnz,x,b,num_LUs,num_rhs,numCores,jointCores);
+	}
+}
+#undef IND_T
+#undef VAL_T
+
+
 // n[i] the number of 
 
 template<typename IND, typename VAL>

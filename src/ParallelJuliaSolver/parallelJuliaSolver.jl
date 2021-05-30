@@ -44,7 +44,7 @@ function isempty(A::MySparseMatrixCSR{VAL,IND}) where {VAL,IND}
 	return length(A.nzval)==0;
 end
 
-
+export parallelJuliaSolver
 mutable struct parallelJuliaSolver{VAL,IND} <: AbstractSolver
 	L::Union{SparseMatrixCSC{VAL,IND},MySparseMatrixCSR{VAL,IND}};
 	U::Union{SparseMatrixCSC{VAL,IND},MySparseMatrixCSR{VAL,IND}};
@@ -104,6 +104,10 @@ function solveLinearSystem!(A::SparseMatrixCSC,B::Union{Array{VAL},SparseMatrixC
 	return X, param
 end # function solveLinearSystem
 
+import jInv.LinearSolvers.setupSolver
+function setupSolver(AI::SparseMatrixCSC,param::parallelJuliaSolver{VAL,IND}) where {VAL,IND}
+	return setupLUFactor(AI,param);
+end
 
 
 function setupLUFactor(AI::SparseMatrixCSC,param::parallelJuliaSolver{VAL,IND}) where {VAL,IND}
@@ -130,10 +134,10 @@ function setupLUFactor(AI::SparseMatrixCSC,param::parallelJuliaSolver{VAL,IND}) 
 		param.p = convert(Array{IND},p);
 		param.q = convert(Array{IND},q);
 	else
-		param.L = convertCSC2MyCSR(L,VAL,IND);
-		param.U = convertCSC2MyCSR(U,VAL,IND);
-		param.p = convert(Array{IND},p);
-		param.q = convert(Array{IND},q);
+		param.L = convertCSC2MyCSR(L,VAL,IND); L=spzeros(0);
+		param.U = convertCSC2MyCSR(U,VAL,IND); U=spzeros(0);
+		param.p = convert(Array{IND},p);	   p=[];
+		param.q = convert(Array{IND},q);       q=[];
 	end
 	return param;
 end
@@ -220,6 +224,11 @@ end
 
 function applyLUSolve(b::Array{ComplexF32},x::Array{ComplexF32},LU::parallelJuliaSolver{ComplexF32,UInt32},n,nnz;doTranspose=0)
 	ccall((:applyLUsolve_CFP32_UINT32,parLU_lib),Nothing,(Ptr{Int64},Ptr{ComplexF32},Ptr{UInt32},Ptr{Int64},Ptr{ComplexF32},Ptr{UInt32},Ptr{UInt32},Ptr{UInt32},Ptr{Int64},Ptr{Int64},Ptr{ComplexF32},Ptr{ComplexF32},Int64, Int64, Int64,Int64,Int64,),
+			LU.L.rowptr,LU.L.nzval,LU.L.colval,LU.U.rowptr,LU.U.nzval,LU.U.colval, LU.p,LU.q, n,nnz,x,b,1,size(b,2), LU.numCores,1,doTranspose);
+end
+
+function applyLUSolve(b::Array{ComplexF32},x::Array{ComplexF32},LU::parallelJuliaSolver{ComplexF32,Int64},n,nnz;doTranspose=0)
+	ccall((:applyLUsolve_CFP32_INT64,parLU_lib),Nothing,(Ptr{Int64},Ptr{ComplexF32},Ptr{Int64},Ptr{Int64},Ptr{ComplexF32},Ptr{Int64},Ptr{Int64},Ptr{Int64},Ptr{Int64},Ptr{Int64},Ptr{ComplexF32},Ptr{ComplexF32},Int64, Int64, Int64,Int64,Int64,),
 			LU.L.rowptr,LU.L.nzval,LU.L.colval,LU.U.rowptr,LU.U.nzval,LU.U.colval, LU.p,LU.q, n,nnz,x,b,1,size(b,2), LU.numCores,1,doTranspose);
 end
 

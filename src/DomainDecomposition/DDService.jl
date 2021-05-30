@@ -1,10 +1,10 @@
 export getIndicesOfCellsArray;
-function getIndicesOfCellsArray(param::DomainDecompositionParam)
-	Mesh 				= param.Mesh;
+function getIndicesOfCellsArray(Mesh::RegularMesh, overlap::Array{Int64,1},numDomains::Array{Int64,1},getIndicesOfCell::Function)
+	# Mesh 				= param.Mesh;
+	# overlap 			= param.overlap;
+	# numDomains 			= param.numDomains
+	# getIndicesOfCell	= param.getIndicesOfCell;
 	ncells				= Mesh.n;
-	overlap 			= param.overlap;
-	numDomains 			= param.numDomains
-	getIndicesOfCell	= param.getIndicesOfCell;
 	## This is just a tryout:
 	Idxs = getIndicesOfCell(numDomains,overlap,div.(ncells,2).+1,ncells);
 	lenIdxs = length(Idxs);

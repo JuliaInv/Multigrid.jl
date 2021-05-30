@@ -50,6 +50,9 @@ elseif param.relaxType == "VankaFaces"
 	x = RelaxVankaFacesColor(AT,x,b,D,npresmth,numCores,param.Meshes[level],param.transferOperatorType=="SystemsFacesMixedLinear",FULL_VANKA);
 elseif param.relaxType == "EconVankaFaces"
 	x = RelaxVankaFacesColor(AT,x,b,D,npresmth,numCores,param.Meshes[level],param.transferOperatorType=="SystemsFacesMixedLinear",ECON_VANKA);
+elseif param.relaxType=="hybridVankaFacesKaczmarz"
+	x = RelaxHybridVanka(param.relaxPrecs[level], AT,x,b,npresmth,param.relaxPrecs[level].numCores,param.Meshes[level],
+								param.transferOperatorType=="SystemsFacesMixedLinear",KACMARZ_VANKA);
 else
 	x = relax(AT,r,x,b,D,npresmth,numCores);
 end
@@ -97,6 +100,9 @@ elseif param.relaxType == "VankaFaces"
 	x = RelaxVankaFacesColor(AT,x,b,D,npostsmth,numCores,param.Meshes[level],param.transferOperatorType=="SystemsFacesMixedLinear",FULL_VANKA);
 elseif param.relaxType == "EconVankaFaces"
 	x = RelaxVankaFacesColor(AT,x,b,D,npostsmth,numCores,param.Meshes[level],param.transferOperatorType=="SystemsFacesMixedLinear", ECON_VANKA);
+elseif param.relaxType=="hybridVankaFacesKaczmarz"
+	x = RelaxHybridVanka(param.relaxPrecs[level], AT,x,b,npostsmth,param.relaxPrecs[level].numCores,param.Meshes[level],
+								param.transferOperatorType=="SystemsFacesMixedLinear",KACMARZ_VANKA);
 else
 	x = relax(AT,r,x,b,D,npostsmth,numCores);
 end
@@ -125,7 +131,11 @@ end
 
 function solveCoarsest(param::MGparam{VAL,IND},b::Array{VAL},x::Array{VAL},doTranspose::Int64=0) where {VAL,IND}
 
-if isa(param.LU,AbstractSolver)
+if isa(param.LU,DomainDecompositionParam)
+	AT = param.As[end];
+	(x,param.LU) = solveDDSerial(AT,b,x,param.LU,1,doTranspose);
+	return x;
+elseif isa(param.LU,AbstractSolver)
 	AT = param.As[end];
 	(x,param.LU) = solveLinearSystem!(AT,b,x,param.LU);
 	return x;

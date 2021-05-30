@@ -25,7 +25,7 @@ for l = 1:(param.levels-1)
 	end
     AT = As[l];
     if param.relaxType=="Jac" || param.relaxType=="Jac-GMRES" || param.relaxType=="SPAI"
-		relaxPrecs[l] = getRelaxPrec(AT,VAL,param.relaxType,param.relaxParam,[],false);
+		relaxPrecs[l] = getRelaxPrec(AT,param.relaxType,param.relaxParam,[],false);
 	else
 		error("Unknown relaxation type !!!!");
 	end

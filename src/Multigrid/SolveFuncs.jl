@@ -122,13 +122,13 @@ function solveGMRES_MG(Afun::Function,param::MGparam{VAL,IND},b::Array,x0::Array
 MMG = getMultigridPreconditioner(param,b,verbose);
 out = -2;
 if verbose
-	out = 2;
+	out = 1;
 end
 if size(b,2)==1
 	b = vec(b);
-	x, flag,rnorm,iter = KrylovMethods.fgmres(Afun,b,inner,tol = param.relativeTol,maxIter = param.maxOuterIter,M = MMG, x = x0,out=out,flexible=flexible);
+	x, flag,rnorm,iter,resvec = KrylovMethods.fgmres(Afun,b,inner,tol = param.relativeTol,maxIter = param.maxOuterIter,M = MMG, x = x0,out=out,flexible=flexible);
 else
-	x, flag,rnorm,iter = KrylovMethods.blockFGMRES(Afun,b,inner,tol = param.relativeTol,maxIter = param.maxOuterIter,M = MMG, X = x0,out=out,flexible=flexible);
+	x, flag,rnorm,iter,resvec = KrylovMethods.blockFGMRES(Afun,b,inner,tol = param.relativeTol,maxIter = param.maxOuterIter,M = MMG, X = x0,out=out,flexible=flexible);
 end
-return x,param,iter;
+return x,param,iter,resvec;
 end

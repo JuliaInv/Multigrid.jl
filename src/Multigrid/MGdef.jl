@@ -4,6 +4,7 @@ using Multigrid.DomainDecomposition
 
 import jInv.LinearSolvers.copySolver;
 import jInv.LinearSolvers.AbstractSolver;
+import Base.copy
 
 export MGparam;
 export getMGparam, MGsetup, clear!
@@ -91,7 +92,7 @@ mutable struct MGparam{VAL,IND}
 	maxOuterIter		:: Int64
 	relativeTol			:: Float64
 	relaxType		    :: String
-	relaxParam			:: Union{Array{Float64},Float64}
+	relaxParam			:: Union{Array{Float64},Float64,Any}
 	relaxPre			:: Function
 	relaxPost			:: Function
 	cycleType			:: Char
@@ -107,7 +108,7 @@ mutable struct MGparam{VAL,IND}
 	doTranspose			:: Int64
 	strongConnParam		:: Float64
 	FilteringParam		:: Float64
-	Meshes				:: Array{RegularMesh}
+	Meshes				:: Union{Array{RegularMesh},RegularMesh}
 	transferOperatorType:: String
 	singlePrecision		:: Bool
 end

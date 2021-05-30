@@ -1,12 +1,12 @@
 
-export getHybridKaczmarzPrecond,getHybridKaczmarz
+export getHybridKaczmarzPrecond,getHybridKaczmarz, getHybridKaczmarzParam
 const parRelax_lib  = abspath(joinpath(splitdir(Base.source_path())[1],"../..","deps","builds","parRelax"))
 
 
 const ArrIdxsType = UInt32;
 
 mutable struct hybridKaczmarz{VAL,IND}
-	DDparam 	:: DomainDecompositionParam;
+	numDomains 	:: Array{Int64,1}
 	invDiag 	:: Array
 	numCores	:: Int64
 	omega_damp	:: Float64
@@ -15,22 +15,38 @@ mutable struct hybridKaczmarz{VAL,IND}
 	numit 		:: Int64
 end
 
+mutable struct hybridKaczmarzParams
+	numDomains 	:: Array{Int64,1}
+	numCores	:: Int64
+	omega_damp	:: Float64
+	numit 		:: Int64
+end
+
+
+import Base.copy
+function copy(p::hybridKaczmarzParams)
+	return hybridKaczmarzParams(p.numDomains,p.numCores,p.omega_damp,p.numit);
+end
+
+function getHybridKaczmarzParam(numDomains::Array{Int64,1},omega_damp::Float64,numCores::Int64,numit::Int64)
+	return hybridKaczmarzParams(numDomains,numCores,omega_damp,numit);
+end
+
 function getHybridKaczmarz(VAL::Type,IND::Type,AT::SparseMatrixCSC,Mesh::RegularMesh, numDomains::Array{Int64,1}, 
 						getIndicesOfCell::Function,omega_damp::Float64,numCores::Int64,numit::Int64) 
 if prod(numDomains) < numCores
 	println("*** WARNING: getHybridKaczmarz: numDomains < numCores. ***");
 end
-DDparam = getDomainDecompositionParam(Mesh,numDomains,zeros(Int64,size(numDomains)),getIndicesOfCell, getJuliaSolver());
 invDiag = convert(Array{VAL,1},omega_damp./(vec(sum(conj(AT).*AT,dims=1))));
-ArrIdxs = getIndicesOfCellsArray(DDparam);
-return hybridKaczmarz{VAL,IND}(DDparam,invDiag,numCores,omega_damp,ArrIdxs,identity,numit);
+ArrIdxs = getIndicesOfCellsArray(Mesh, zeros(Int64,size(numDomains)),numDomains,getIndicesOfCell);
+return hybridKaczmarz{VAL,IND}(numDomains,invDiag,numCores,omega_damp,ArrIdxs,identity,numit);
 end
 
 function getHybridKaczmarzPrecond(param::hybridKaczmarz{VAL,IND},AT::SparseMatrixCSC{VAL,IND},nrhs::Int64) where {VAL,IND}
 # void applyHybridKaczmarz(spIndType *rowptr , spValType *valA ,spIndType *colA, long long numDomains, long long domainLength ,
 						# unsigned int *ArrIdxs, spValType *x, spValType *b, spValType *invD,long long numit, long long numCores){
 x = zeros(VAL,size(AT,2),nrhs);
-numDomains = prod(param.DDparam.numDomains);
+numDomains = prod(param.numDomains);
 param.precond = (r)->(x[:].=0.0;applyHybridKaczmarz(param::hybridKaczmarz{VAL,IND},AT::SparseMatrixCSC{VAL,IND},r::Array{VAL},x::Array{VAL},numDomains);return x;);
 return param.precond; 
 end

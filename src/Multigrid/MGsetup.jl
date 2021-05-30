@@ -11,12 +11,15 @@ As 			= Array{SparseMatrixCSC}(undef,param.levels);
 Meshes  	= Array{RegularMesh}(undef,param.levels); 
 relaxPrecs 	= Array{Any}(undef,param.levels);
 
-relaxParamArr = zeros(param.levels);
+tt = typeof(param.relaxParam);
 
-if length(param.relaxParam)==1
-	relaxParamArr[:] .= param.relaxParam;
+if isa(param.relaxParam,Array)==false
+	relaxParamArr = Array{tt}(undef,param.levels);
+	for k=1:param.levels
+		relaxParamArr[k] = copy(param.relaxParam);
+	end
 else
-	relaxParamArr[:] .= param.relaxParam;
+	relaxParamArr = param.relaxParam;
 end
 
 PDEparam = 0;
@@ -69,7 +72,7 @@ for l = 1:(param.levels-1)
 		end
 	end
 
-	relaxPrecs[l] = getRelaxPrec(AT,VAL,param.relaxType,relaxParamArr[l],Meshes[l],withCellsBlock);
+	relaxPrecs[l] = getRelaxPrec(AT,param.relaxType,relaxParamArr[l],Meshes[l],withCellsBlock);
 	
 	
 	if param.singlePrecision
@@ -131,16 +134,21 @@ end
 
 
 
-function getRelaxPrec(AT,VAL::Type,relaxType,relaxParam=1.0,Mesh_l=[],withCellsBlock=false)
+function getRelaxPrec(AT::SparseMatrixCSC{VAL,IND},relaxType::String,relaxParam=1.0,Mesh_l=[],withCellsBlock=false) where {VAL,IND}
 if relaxType=="Jac" || relaxType=="Jac-GMRES"
 	d = Vector(conj(relaxParam./diag(AT)));
 	return convert(Array{VAL},d);
 elseif relaxType=="SPAI"
 	return convert(Array{VAL},conj(relaxParam*getSPAIprec(AT))); 
+elseif relaxType=="hybridKaczmarzNodal"
+	return getHybridKaczmarz(VAL, IND, AT, Mesh_l, relaxParam.numDomains, 
+						getNodalIndicesOfCell, relaxParam.omega_damp, relaxParam.numCores, relaxParam.numit);
 elseif relaxType=="VankaFaces"
 	return setupVankaFacesPreconditioner(AT,Mesh_l, relaxParam, withCellsBlock, FULL_VANKA);
 elseif relaxType=="EconVankaFaces"
 	return setupVankaFacesPreconditioner(AT,Mesh_l, relaxParam, withCellsBlock, ECON_VANKA);
+elseif relaxType=="hybridVankaFacesKaczmarz"
+	return getHybridVankaFaces(AT,Mesh_l, relaxParam.numDomains, relaxParam.omega_damp, relaxParam.numCores, relaxParam.numit,withCellsBlock,KACMARZ_VANKA);
 else
 	error("Unknown relaxation type !!!!");
 end
@@ -213,12 +221,15 @@ end
 
 function replaceMatrixInHierarchy(param::MGparam{VAL,IND},AT::SparseMatrixCSC{VAL,IND},verbose::Bool=false) where {VAL,IND}
 
-relaxParamArr = zeros(param.levels);
+tt = typeof(param.relaxParam);
 
-if length(param.relaxParam)==1
-	relaxParamArr[:] .= param.relaxParam;
+if isa(param.relaxParam,Array)==false
+	relaxParamArr = Array{tt}(undef,param.levels);
+	for k=1:param.levels
+		relaxParamArr[k] = copy(param.relaxParam);
+	end
 else
-	relaxParamArr[:] .= param.relaxParam;
+	relaxParamArr = param.relaxParam;
 end
 
 param.As[1] = convert(SparseMatrixCSC{VAL,IND},AT);
@@ -306,9 +317,13 @@ end
 
 export defineCoarsestAinv;
 function defineCoarsestAinv(param::MGparam{VAL,IND},AT::SparseMatrixCSC{VAL,IND}) where {VAL,IND}
-if isa(param.LU,AbstractSolver)
-	println("Using AbstractSolver");
-	param.LU = setupSolver(AT,param.LU);
+if isa(param.LU,DomainDecompositionParam)
+	param.LU.Mesh = param.Meshes[end];
+	param.LU = setupDDSerial(AT,param.LU);
+	println("Done coarsest setup");
+elseif isa(param.LU,AbstractSolver)
+	param.LU = setupSolver(sparse(AT'),param.LU);
+	println("Done coarsest setup");
 else
 	if param.coarseSolveType == "MUMPS"
 		param.LU = factorMUMPS(AT',0,0);

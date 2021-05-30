@@ -27,7 +27,7 @@ LU = getParallelJuliaSolver(Float64,Int64,numCores=1,backend=1);
 
 for j=1:length(Bs)
 	print("nrhs=$(size(Bs[j],2)), issparse(rhs)=$(issparse(Bs[j])) : ")
-	t = @elapsed x,  = solveLinearSystem(Ar,Bs[j],LU);
+	t = @elapsed local x,  = solveLinearSystem(Ar,Bs[j],LU);
 	@test norm(Ar*x-Bs[j],Inf)/norm(Bs[j],Inf) < 1e-8
 	#println("V0: took ",t);
 	println("LU solve time: ",LU.solveTime);
@@ -39,7 +39,7 @@ LU = getParallelJuliaSolver(Float64,Int64,numCores=1,backend=2);
 
 for j=1:length(Bs)
 	print("nrhs=$(size(Bs[j],2)), issparse(rhs)=$(issparse(Bs[j])) : ")
-	t = @elapsed x,  = solveLinearSystem(Ar,Bs[j],LU);
+	t = @elapsed local x,  = solveLinearSystem(Ar,Bs[j],LU);
 	@test norm(Ar*x-Bs[j],Inf)/norm(Bs[j],Inf) < 1e-8
 	#println("V1: took ",t);
 	println("LU solve time: ",LU.solveTime);
@@ -50,7 +50,7 @@ LU = getParallelJuliaSolver(Float64,Int64,numCores=2,backend=3);
 
 for j=1:length(Bs)
 	print("nrhs=$(size(Bs[j],2)), issparse(rhs)=$(issparse(Bs[j])) : ")
-	t = @elapsed x,  = solveLinearSystem(Ar,Bs[j],LU);
+	t = @elapsed local x,  = solveLinearSystem(Ar,Bs[j],LU);
 	@test norm(Ar*x-Bs[j],Inf)/norm(Bs[j],Inf) < 1e-8
 	#println("V1: took ",t);
 	println("LU solve time: ",LU.solveTime);
@@ -62,7 +62,7 @@ LU = getParallelJuliaSolver(Float32,UInt32,numCores=2,backend=3);
 
 for j=1:length(Bs)
 	print("nrhs=$(size(Bs[j],2)), issparse(rhs)=$(issparse(Bs[j])) : ")
-	t = @elapsed x,  = solveLinearSystem(Ar,Bs[j],LU);
+	t = @elapsed local x,  = solveLinearSystem(Ar,Bs[j],LU);
 	@test norm(Ar*x-Bs[j],Inf)/norm(Bs[j],Inf) < 1e-4
 	#println("V1: took ",t);
 	println("LU solve time: ",LU.solveTime);
@@ -82,7 +82,7 @@ LU = getParallelJuliaSolver(ComplexF64,Int64,numCores=2,backend=3);
 
 for j=1:length(Bs)
 	print("nrhs=$(size(Bs[j],2)), issparse(rhs)=$(issparse(Bs[j])) : ")
-	x,  = solveLinearSystem(Ar,Bs[j],LU);
+	local x,  = solveLinearSystem(Ar,Bs[j],LU);
 	@test norm(Ar*x-Bs[j],Inf)/norm(Bs[j],Inf) < 1e-10
 	print("\n")
 end
@@ -91,7 +91,7 @@ Bs     = (convert(Array{ComplexF32,1}, b),convert(Array{ComplexF32,2}, bs));
 LU = getParallelJuliaSolver(ComplexF32,UInt32,numCores=2,backend=3);
 for j=1:length(Bs)
 	print("nrhs=$(size(Bs[j],2)), issparse(rhs)=$(issparse(Bs[j])) : ")
-	x,  = solveLinearSystem(Ar,Bs[j],LU);
+	local x,  = solveLinearSystem(Ar,Bs[j],LU);
 	@test norm(Ar*x-Bs[j],Inf)/norm(Bs[j],Inf) < 1e-4
 	print("\n")
 end

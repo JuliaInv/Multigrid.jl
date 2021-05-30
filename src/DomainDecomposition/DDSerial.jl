@@ -1,8 +1,6 @@
 
 export solveDDSerial,setupDDSerial#,getSubMeshOfCell;#,solveDDJac,solveDDRB
 
-
-
 function computeResidualAtIdx(AT::SparseMatrixCSC,b::Array,x::Array,Idxs::Array{DDIndType})
 r = b[Idxs];
 for t = 1:length(Idxs)
@@ -21,25 +19,28 @@ end
 return r;
 end
 
-
 function performSetup(i::Array{Int64}, AI::SparseMatrixCSC,  DDparam::DomainDecompositionParam)
 	# println("setupping sub domain: ",i," by ",myid());
+	if DDparam.getSubDomainMass!=identity
+		AI = AI + DDparam.getSubDomainMass(DDparam,i);
+	end
 	DDPrec = DomainDecompositionPreconditionerParam([],i,AI,[],copySolver(DDparam.Ainv))
-	(~,DDPrec.Ainv) = solveLinearSystem!(AI,zeros(eltype(AI),size(AI,2)),zeros(eltype(AI),size(AI,2)),DDPrec.Ainv);
-	# println("setupping sub domain: ",i," all-done by ",myid());
+	DDPrec.Ainv = setupSolver(AI,DDPrec.Ainv);
+
+	if isa(DDPrec.Ainv,ParallelJuliaSolver.parallelJuliaSolver)
+		DDPrec.A_i = spzeros(0,0);
+	end
+	# println("setup for sub domain: ",i," all-done by ",myid());
 	return DDPrec;
 end
 
-
-
-
 function performSetup(i::Array{Int64}, AI::DomainDecompositionOperatorConstructor,  DDparam::DomainDecompositionParam)
 	AII = AI.getOperator(AI.problem_param);
-	DirichletMass = AI.getDirichletMass(DDparam,i)[:];
-	DDPrec = DomainDecompositionPreconditionerParam(AI.problem_param,i,AII,DirichletMass,copySolver(DDparam.Ainv))
-	AII_new = sparse((AII + Diagonal(DirichletMass))');
-	(~,DDPrec.Ainv) = solveLinearSystem!(AII_new,zeros(eltype(AII),size(AII,2)),zeros(eltype(AII),size(AII,2)),DDPrec.Ainv);
-	# println("setipping sub domain: ",i," by ",myid());
+	DirichletMass = AI.getDirichletMass(DDparam,AI.problem_param,i)[:];
+	AII_new = sparse(AII + Diagonal(DirichletMass));
+	DDPrec = DomainDecompositionPreconditionerParam(AI.problem_param,i,AII_new,DirichletMass,copySolver(DDparam.Ainv))
+	DDPrec.Ainv = setupSolver(AII_new,DDPrec.Ainv);
+	# println("setup for sub domain: ",i," by ",myid());
 	return DDPrec;
 end
 
@@ -61,8 +62,7 @@ end
 
 
 
-function setupDDSerial(A::Union{SparseMatrixCSC,DomainDecompositionOperatorConstructor},DDparam::DomainDecompositionParam)
-
+function setupDDSerial(AT::Union{SparseMatrixCSC,DomainDecompositionOperatorConstructor},DDparam::DomainDecompositionParam)
 M 			= DDparam.Mesh;
 numDomains 	= DDparam.numDomains;
 overlap 	= DDparam.overlap;
@@ -72,12 +72,12 @@ n = M.n;
 for ii = 1:prod(numDomains)
 	i = cs2loc(ii,numDomains);
 	IIp = DDparam.getIndicesOfCell(numDomains,overlap, i,n);
-	if isa(A,SparseMatrixCSC)==true
-		AI = sparse(A[IIp,IIp]');
+	if isa(AT,SparseMatrixCSC)==true
+		AI = sparse(AT[IIp,IIp]');
 		DDPreconditioners[ii] = performSetup(i, AI,  DDparam);
 	else
-		subparams = A.getSubParams(A.problem_param, M,i,numDomains,overlap);
-		AI = DomainDecompositionOperatorConstructor(subparams,A.getSubParams,A.getOperator,A.getDirichletMass);
+		subparams = AT.getSubParams(AT.problem_param, M,i,numDomains,overlap);
+		AI = DomainDecompositionOperatorConstructor(subparams,AT.getSubParams,AT.getOperator,AT.getDirichletMass);
 		DDPreconditioners[ii] = performSetup(i, AI,  DDparam);
 	end
 	IIp = convert(Array{DDIndType},IIp);
@@ -121,12 +121,49 @@ return x,DDparam;
 end
 
 
+function solveGSDDSerial(AT::SparseMatrixCSC,b::Array,x::Array,DDparam::DomainDecompositionParam,niter=1,doTranspose::Int64=0)
+
+ncells = DDparam.Mesh.n;
+dim = length(ncells);
+numDomains = DDparam.numDomains;
+overlap = DDparam.overlap;
+
+for k=1:niter
+	for ic = 1:prod(numDomains);
+		# icloc = cs2loc(ic,numDomains);
+		#IIp = DDparam.getIndicesOfCell(numDomains,overlap,icloc,ncells);
+		IIp = DDparam.GlobalIndices[ic];
+		if isa(AT,SparseMatrixCSC)==true
+			r = computeResidualAtIdx(AT,b,x,IIp);
+		else
+			r = computeResidualAtIdx(AT,b,x,IIp);
+			# r = computeResidual(DDparam.PrecParams[ic],x[IIp],b[IIp]);					
+		end
+		(t,DDparam.PrecParams[ic]) = solveSubDomain(r,DDparam.PrecParams[ic],doTranspose)
+		x[IIp] = x[IIp] + t;
+	end
+	for ic = prod(numDomains):-1:1;
+		# icloc = cs2loc(ic,numDomains);
+		#IIp = DDparam.getIndicesOfCell(numDomains,overlap,icloc,ncells);
+		IIp = DDparam.GlobalIndices[ic];
+		if isa(AT,SparseMatrixCSC)==true
+			r = computeResidualAtIdx(AT,b,x,IIp);
+		else
+			r = computeResidualAtIdx(AT,b,x,IIp);
+			# r = computeResidual(DDparam.PrecParams[ic],x[IIp],b[IIp]);					
+		end
+		(t,DDparam.PrecParams[ic]) = solveSubDomain(r,DDparam.PrecParams[ic],doTranspose)
+		x[IIp] = x[IIp] + t;
+	end
+end
+if niter > 1
+	println(k,": ",norm(b - AT'*x)/norm(b))
+end
+return x,DDparam;
+end
+
 function solveSubDomain(r,prec::DomainDecompositionPreconditionerParam,doTranspose::Int64)
-	Os = spzeros(0,0);
 	t = zeros(eltype(r),size(r));
 	t,prec.Ainv = solveLinearSystem!(prec.A_i,r,t,prec.Ainv,doTranspose);
 	return t,prec;
 end
-
-
-# function solveDDJac(AT::SparseMatrixCSC,n::Array{Int64},b::ArrayTypes,x::ArrayTypes,getIndicesOfCell::Function,numDomains::Array{Int64,1},overlap::Array{Int64,1},DDfactors::Array{Any,1},niter = 1,doTranspose::Int64=0)

@@ -26,6 +26,23 @@ function getBoxIdxs(UpperLeftCorner::Array{Int64},BottomRightCorner::Array{Int64
 	end
 end
 
+
+function getOriginalBoundingBoxCells(NumCells::Array{Int64,1},overlap::Array{Int64,1},i,nc)
+	
+	cellSize = div.(nc,NumCells);
+	originalUpperLeftCorner = (i.-1).*cellSize .+ 1;
+	originalBottomRightCorner = originalUpperLeftCorner .+ (cellSize.-1);
+	originalBottomRightCorner[i.==NumCells] .== nc[i.==NumCells];
+	return (originalUpperLeftCorner,originalBottomRightCorner);
+	# if length(nc)==2
+		# originalUpperLeftCorner = [(i[1]-1)*cellSize[1] + 1,(i[2]-1)*cellSize[2] + 1];
+		# originalBottomRightCorner = originalUpperLeftCorner + [cellSize[1]-1,cellSize[2]-1];
+	# else
+		# originalUpperLeftCorner = [(i[1]-1)*cellSize[1] + 1,(i[2]-1)*cellSize[2] + 1,(i[3]-1)*cellSize[3] + 1];
+		# originalBottomRightCorner = originalUpperLeftCorner + [cellSize[1]-1,cellSize[2]-1,cellSize[3]-1];
+	# end
+end
+
 ##
 # This function just extends the box with overlapp only if possible.
 ##
@@ -66,19 +83,21 @@ end
 function getCellCenteredIndicesOfCell(NumCells::Array{Int64,1},overlap::Array{Int64,1},i,nc)
 	indOver = [];
 	if length(nc)==2
-		originalUpperLeftCorner = [(i[1]-1)*div(nc[1],NumCells[1]) + 1,(i[2]-1)*div(nc[2],NumCells[2]) + 1];
-		originalBottomRightCorner = originalUpperLeftCorner + [div(nc[1],NumCells[1])-1,div(nc[2],NumCells[2])-1];
+		# originalUpperLeftCorner = [(i[1]-1)*div(nc[1],NumCells[1]) + 1,(i[2]-1)*div(nc[2],NumCells[2]) + 1];
+		# originalBottomRightCorner = originalUpperLeftCorner + [div(nc[1],NumCells[1])-1,div(nc[2],NumCells[2])-1];
+		(originalUpperLeftCorner,originalBottomRightCorner) = getOriginalBoundingBoxCells(NumCells,overlap,i,nc);
 		# CELLS X CELLS
 		(UpperLeftCorner,BottomRightCorner) = getBoxWithOverlap(originalUpperLeftCorner,originalBottomRightCorner,nc,overlap);
 		I1,I2 = getBoxIdxs(UpperLeftCorner,BottomRightCorner);
-		indOver = I1[:] + (I2[:]-1)*(nc[1])
+		indOver = I1[:] .+ (I2[:].-1)*(nc[1])
 	else
-		originalUpperLeftCorner = [(i[1]-1)*div(nc[1],NumCells[1]) + 1,(i[2]-1)*div(nc[2],NumCells[2]) + 1,(i[3]-1)*div(nc[3],NumCells[3]) + 1];
-		originalBottomRightCorner = originalUpperLeftCorner + [div(nc[1],NumCells[1])-1,div(nc[2],NumCells[2])-1,div(nc[3],NumCells[3])-1];
+		# originalUpperLeftCorner = [(i[1]-1)*div(nc[1],NumCells[1]) + 1,(i[2]-1)*div(nc[2],NumCells[2]) + 1,(i[3]-1)*div(nc[3],NumCells[3]) + 1];
+		# originalBottomRightCorner = originalUpperLeftCorner + [div(nc[1],NumCells[1])-1,div(nc[2],NumCells[2])-1,div(nc[3],NumCells[3])-1];
+		(originalUpperLeftCorner,originalBottomRightCorner) = getOriginalBoundingBoxCells(NumCells,overlap,i,nc);
 		# CELLS X CELLS X CELLS
 		(UpperLeftCorner,BottomRightCorner) = getBoxWithOverlap(originalUpperLeftCorner,originalBottomRightCorner,nc,overlap);
 		I1,I2,I3 = getBoxIdxs(UpperLeftCorner,BottomRightCorner);
-		indOver = I1[:] + (I2[:]-1)*(nc[1]) + (I3[:]-1)*(nc[1]*nc[2]);
+		indOver = I1[:] .+ (I2[:].-1)*(nc[1]) .+ (I3[:].-1)*(nc[1]*nc[2]);
 	end
 	return indOver;
 end
@@ -88,13 +107,15 @@ function getSubMeshOfCell(NumCells::Array{Int64,1},overlap::Array{Int64,1},i,Mes
 	indOver = [];
 	nc = Mesh.n;
 	if length(nc)==2
-		originalUpperLeftCorner = [(i[1]-1)*div(nc[1],NumCells[1]) + 1,(i[2]-1)*div(nc[2],NumCells[2]) + 1];
-		originalBottomRightCorner = originalUpperLeftCorner + [div(nc[1],NumCells[1])-1,div(nc[2],NumCells[2])-1];
+		# originalUpperLeftCorner = [(i[1]-1)*div(nc[1],NumCells[1]) + 1,(i[2]-1)*div(nc[2],NumCells[2]) + 1];
+		# originalBottomRightCorner = originalUpperLeftCorner + [div(nc[1],NumCells[1])-1,div(nc[2],NumCells[2])-1];
+		(originalUpperLeftCorner,originalBottomRightCorner) = getOriginalBoundingBoxCells(NumCells,overlap,i,nc);
 		# CELLS X CELLS
 		(UpperLeftCorner,BottomRightCorner) = getBoxWithOverlap(originalUpperLeftCorner,originalBottomRightCorner,nc,overlap);
 	else
-		originalUpperLeftCorner = [(i[1]-1)*div(nc[1],NumCells[1]) + 1,(i[2]-1)*div(nc[2],NumCells[2]) + 1,(i[3]-1)*div(nc[3],NumCells[3]) + 1];
-		originalBottomRightCorner = originalUpperLeftCorner + [div(nc[1],NumCells[1])-1,div(nc[2],NumCells[2])-1,div(nc[3],NumCells[3])-1];
+		# originalUpperLeftCorner = [(i[1]-1)*div(nc[1],NumCells[1]) + 1,(i[2]-1)*div(nc[2],NumCells[2]) + 1,(i[3]-1)*div(nc[3],NumCells[3]) + 1];
+		# originalBottomRightCorner = originalUpperLeftCorner + [div(nc[1],NumCells[1])-1,div(nc[2],NumCells[2])-1,div(nc[3],NumCells[3])-1];
+		(originalUpperLeftCorner,originalBottomRightCorner) = getOriginalBoundingBoxCells(NumCells,overlap,i,nc);
 		# CELLS X CELLS X CELLS
 		(UpperLeftCorner,BottomRightCorner) = getBoxWithOverlap(originalUpperLeftCorner,originalBottomRightCorner,nc,overlap);
 	end
@@ -109,15 +130,16 @@ end
 function getNodalIndicesOfCell(NumCells::Array{Int64,1},overlap::Array{Int64,1},i,nc)
 	
 	if length(nc)==2
-		originalUpperLeftCorner = [(i[1]-1)*div(nc[1],NumCells[1]) + 1,(i[2]-1)*div(nc[2],NumCells[2]) + 1];
-		originalBottomRightCorner = originalUpperLeftCorner + [div(nc[1],NumCells[1]),div(nc[2],NumCells[2])];
+		# originalUpperLeftCorner = [(i[1]-1)*div(nc[1],NumCells[1]) + 1,(i[2]-1)*div(nc[2],NumCells[2]) + 1];
+		# originalBottomRightCorner = originalUpperLeftCorner + [div(nc[1],NumCells[1]),div(nc[2],NumCells[2])];
+		(originalUpperLeftCorner,originalBottomRightCorner) = getOriginalBoundingBoxCells(NumCells,overlap,i,nc);
 		(UpperLeftCorner,BottomRightCorner) = getBoxWithOverlap(originalUpperLeftCorner,originalBottomRightCorner,nc .+ [1;1],overlap);
 		I1,I2 = getBoxIdxs(UpperLeftCorner,BottomRightCorner);
 		indNodal = I1[:] + (I2[:].-1)*(nc[1]+1)
 	else
-		originalUpperLeftCorner = [(i[1]-1)*div(nc[1],NumCells[1]) + 1,(i[2]-1)*div(nc[2],NumCells[2]) + 1,(i[3]-1)*div(nc[3],NumCells[3]) + 1];
-		originalBottomRightCorner = originalUpperLeftCorner + [div(nc[1],NumCells[1]),div(nc[2],NumCells[2]),div(nc[3],NumCells[3])];
-		
+		# originalUpperLeftCorner = [(i[1]-1)*div(nc[1],NumCells[1]) + 1,(i[2]-1)*div(nc[2],NumCells[2]) + 1,(i[3]-1)*div(nc[3],NumCells[3]) + 1];
+		# originalBottomRightCorner = originalUpperLeftCorner + [div(nc[1],NumCells[1]),div(nc[2],NumCells[2]),div(nc[3],NumCells[3])];
+		(originalUpperLeftCorner,originalBottomRightCorner) = getOriginalBoundingBoxCells(NumCells,overlap,i,nc);
 		# NODES X NODES X NODES
 		(UpperLeftCorner,BottomRightCorner) = getBoxWithOverlap(originalUpperLeftCorner,originalBottomRightCorner,nc + [1;1;1],overlap);
 		I1,I2,I3 = getBoxIdxs(UpperLeftCorner,BottomRightCorner);
@@ -131,8 +153,9 @@ end
 
 function getDirichletMassNodal(NumCells::Array{Int64},overlap::Array{Int64},i::Array{Int64},nc::Array{Int64})
 	if length(nc)==2
-		originalUpperLeftCorner = [(i[1]-1)*div(nc[1],NumCells[1]) + 1,(i[2]-1)*div(nc[2],NumCells[2]) + 1];
-		originalBottomRightCorner = originalUpperLeftCorner + [div(nc[1],NumCells[1]),div(nc[2],NumCells[2])];
+		# originalUpperLeftCorner = [(i[1]-1)*div(nc[1],NumCells[1]) + 1,(i[2]-1)*div(nc[2],NumCells[2]) + 1];
+		# originalBottomRightCorner = originalUpperLeftCorner + [div(nc[1],NumCells[1]),div(nc[2],NumCells[2])];
+		(originalUpperLeftCorner,originalBottomRightCorner) = getOriginalBoundingBoxCells(NumCells,overlap,i,nc);
 		(UpperLeftCorner,BottomRightCorner) = getBoxWithOverlap(originalUpperLeftCorner,originalBottomRightCorner,nc .+ [1;1],overlap);
 		size = BottomRightCorner-UpperLeftCorner.+1;
 		mass = zeros(Float64,tuple(size...));
@@ -165,51 +188,54 @@ function getFacesStaggeredIndicesOfCell(NumCells::Array{Int64},overlap::Array{In
 	if length(nc)==2
 		nf = [prod(nc + [1; 0]),prod(nc + [0; 1])];
 
-		originalUpperLeftCorner = [(i[1]-1)*div(nc[1],NumCells[1]) + 1,(i[2]-1)*div(nc[2],NumCells[2]) + 1];
-		originalBottomRightCorner = originalUpperLeftCorner + [div(nc[1],NumCells[1])-1,div(nc[2],NumCells[2])-1];
+		# originalUpperLeftCorner = [(i[1]-1)*div(nc[1],NumCells[1]) + 1,(i[2]-1)*div(nc[2],NumCells[2]) + 1];
+		# originalBottomRightCorner = originalUpperLeftCorner + [div(nc[1],NumCells[1])-1,div(nc[2],NumCells[2])-1];
+		(originalUpperLeftCorner,originalBottomRightCorner) = getOriginalBoundingBoxCells(NumCells,overlap,i,nc);
 		# NODES X CELLS
 		(UpperLeftCorner,BottomRightCorner) = getBoxWithOverlap(originalUpperLeftCorner,originalBottomRightCorner+ [1;0],nc + [1;0],overlap);
 		I1,I2 = getBoxIdxs(UpperLeftCorner,BottomRightCorner);
-		indNC = I1[:] + (I2[:]-1)*(nc[1]+1)
+		
+		indNC = I1[:] .+ (I2[:] .- 1).*(nc[1]+1)
 	
 		# CELLS X NODES
 		(UpperLeftCorner,BottomRightCorner) = getBoxWithOverlap(originalUpperLeftCorner,originalBottomRightCorner+ [0;1],nc + [0;1],overlap);
 		I1,I2 = getBoxIdxs(UpperLeftCorner,BottomRightCorner);
-		indCN = I1[:] + (I2[:]-1)*(nc[1])
+		indCN = I1[:] .+ (I2[:].-1).*(nc[1])
 	
 		# CELLS X CELLS
 		(UpperLeftCorner,BottomRightCorner) = getBoxWithOverlap(originalUpperLeftCorner,originalBottomRightCorner,nc,overlap);
 		I1,I2 = getBoxIdxs(UpperLeftCorner,BottomRightCorner);
-		indCC = I1[:] + (I2[:]-1)*(nc[1])
+		indCC = I1[:] .+ (I2[:].-1).*(nc[1])
 	
-		indOver = [indNC; indCN + nf[1] ; indCC + nf[1]+nf[2]];
+		indOver = [indNC; indCN .+ nf[1] ; indCC .+ (nf[1]+nf[2])];
 	else
-		nf = [prod(nc + [1; 0 ; 0]),prod(nc + [0; 1 ; 0]),prod(nc + [0; 0 ; 1])];
+		nf = [prod(nc .+ [1; 0 ; 0]),prod(nc .+ [0; 1 ; 0]),prod(nc .+ [0; 0 ; 1])];
 		# overlap = [4,4,4];
-		originalUpperLeftCorner = [(i[1]-1)*div(nc[1],NumCells[1]) + 1,(i[2]-1)*div(nc[2],NumCells[2]) + 1,(i[3]-1)*div(nc[3],NumCells[3]) + 1];
-		originalBottomRightCorner = originalUpperLeftCorner + [div(nc[1],NumCells[1])-1,div(nc[2],NumCells[2])-1,div(nc[3],NumCells[3])-1];
+		# originalUpperLeftCorner = [(i[1]-1)*div(nc[1],NumCells[1]) + 1,(i[2]-1)*div(nc[2],NumCells[2]) + 1,(i[3]-1)*div(nc[3],NumCells[3]) + 1];
+		# originalBottomRightCorner = originalUpperLeftCorner + [div(nc[1],NumCells[1])-1,div(nc[2],NumCells[2])-1,div(nc[3],NumCells[3])-1];
+		(originalUpperLeftCorner,originalBottomRightCorner) = getOriginalBoundingBoxCells(NumCells,overlap,i,nc);
 		
 		# NODES X CELLS X CELLS
 		(UpperLeftCorner,BottomRightCorner) = getBoxWithOverlap(originalUpperLeftCorner,originalBottomRightCorner + [1;0;0],nc + [1;0;0],overlap);
 		I1,I2,I3 = getBoxIdxs(UpperLeftCorner,BottomRightCorner);
-		indNCC = I1[:] + (I2[:]-1)*(nc[1]+1) + (I3[:]-1)*((nc[1]+1)*nc[2]);
+		indNCC = I1[:] .+ (I2[:].-1).*(nc[1]+1) + (I3[:].-1).*((nc[1]+1)*nc[2]);
 	
 		# CELLS X NODES X CELLS
 		(UpperLeftCorner,BottomRightCorner) = getBoxWithOverlap(originalUpperLeftCorner,originalBottomRightCorner+ [0;1;0],nc + [0;1;0],overlap);
 		I1,I2,I3 = getBoxIdxs(UpperLeftCorner,BottomRightCorner);
-		indCNC = I1[:] + (I2[:]-1)*(nc[1]) + (I3[:]-1)*(nc[1]*(nc[2]+1));
+		indCNC = I1[:] .+ (I2[:].-1).*(nc[1]) + (I3[:].-1).*(nc[1]*(nc[2]+1));
 		
 		# CELLS X CELLS X NODES
 		(UpperLeftCorner,BottomRightCorner) = getBoxWithOverlap(originalUpperLeftCorner,originalBottomRightCorner+ [0;0;1],nc + [0;0;1],overlap);
 		I1,I2,I3 = getBoxIdxs(UpperLeftCorner,BottomRightCorner);
-		indCCN = I1[:] + (I2[:]-1)*(nc[1]) + (I3[:]-1)*(nc[1]*nc[2]);
+		indCCN = I1[:] .+ (I2[:].-1).*(nc[1]) + (I3[:].-1).*(nc[1]*nc[2]);
 		
 		# CELLS X CELLS X CELLS
 		(UpperLeftCorner,BottomRightCorner) = getBoxWithOverlap(originalUpperLeftCorner,originalBottomRightCorner,nc,overlap);
 		I1,I2,I3 = getBoxIdxs(UpperLeftCorner,BottomRightCorner);
-		indCCC = I1[:] + (I2[:]-1)*(nc[1]) + (I3[:]-1)*(nc[1]*nc[2]);
+		indCCC = I1[:] .+ (I2[:].-1).*(nc[1]) + (I3[:].-1).*(nc[1]*nc[2]);
 		
-		indOver = [indNCC; indCNC + nf[1] ; indCCN + nf[1]+nf[2] ; indCCC + nf[1]+nf[2]+nf[3]];
+		indOver = [indNCC; indCNC .+ nf[1] ; indCCN .+ (nf[1]+nf[2]) ; indCCC .+ (nf[1]+nf[2]+nf[3])];
 	end
 	
 	
@@ -224,8 +250,9 @@ function getFacesStaggeredIndicesOfCellNoPressure(NumCells::Array{Int64},overlap
 	if length(nc)==2
 		nf = [prod(nc + [1; 0]),prod(nc + [0; 1])];
 
-		originalUpperLeftCorner = [(i[1]-1)*div(nc[1],NumCells[1]) + 1,(i[2]-1)*div(nc[2],NumCells[2]) + 1];
-		originalBottomRightCorner = originalUpperLeftCorner + [div(nc[1],NumCells[1])-1,div(nc[2],NumCells[2])-1];
+		# originalUpperLeftCorner = [(i[1]-1)*div(nc[1],NumCells[1]) + 1,(i[2]-1)*div(nc[2],NumCells[2]) + 1];
+		# originalBottomRightCorner = originalUpperLeftCorner + [div(nc[1],NumCells[1])-1,div(nc[2],NumCells[2])-1];
+		(originalUpperLeftCorner,originalBottomRightCorner) = getOriginalBoundingBoxCells(NumCells,overlap,i,nc);
 		
 		# NODES X CELLS
 		(UpperLeftCorner,BottomRightCorner) = getBoxWithOverlap(originalUpperLeftCorner,originalBottomRightCorner+ [1;0],nc + [1;0],overlap);
@@ -241,13 +268,13 @@ function getFacesStaggeredIndicesOfCellNoPressure(NumCells::Array{Int64},overlap
 		
 	else
 		nf = [prod(nc + [1; 0 ; 0]),prod(nc + [0; 1 ; 0]),prod(nc + [0; 0 ; 1])];
-		originalUpperLeftCorner = [(i[1]-1)*div(nc[1],NumCells[1]) + 1,(i[2]-1)*div(nc[2],NumCells[2]) + 1,(i[3]-1)*div(nc[3],NumCells[3]) + 1];
-		originalBottomRightCorner = originalUpperLeftCorner + [div(nc[1],NumCells[1])-1,div(nc[2],NumCells[2])-1,div(nc[3],NumCells[3])-1];
-		
+		# originalUpperLeftCorner = [(i[1]-1)*div(nc[1],NumCells[1]) + 1,(i[2]-1)*div(nc[2],NumCells[2]) + 1,(i[3]-1)*div(nc[3],NumCells[3]) + 1];
+		# originalBottomRightCorner = originalUpperLeftCorner + [div(nc[1],NumCells[1])-1,div(nc[2],NumCells[2])-1,div(nc[3],NumCells[3])-1];
+		(originalUpperLeftCorner,originalBottomRightCorner) = getOriginalBoundingBoxCells(NumCells,overlap,i,nc);
 		# NODES X CELLS X CELLS
 		(UpperLeftCorner,BottomRightCorner) = getBoxWithOverlap(originalUpperLeftCorner,originalBottomRightCorner + [1;0;0],nc + [1;0;0],overlap);
 		I1,I2,I3 = getBoxIdxs(UpperLeftCorner,BottomRightCorner);
-		indNCC = I1[:] + (I2[:]-1)*(nc[1]+1) + (I3[:].-1)*((nc[1]+1)*nc[2]);
+		indNCC = I1[:] + (I2[:].-1)*(nc[1]+1) + (I3[:].-1)*((nc[1]+1)*nc[2]);
 	
 		# CELLS X NODES X CELLS
 		(UpperLeftCorner,BottomRightCorner) = getBoxWithOverlap(originalUpperLeftCorner,originalBottomRightCorner+ [0;1;0],nc + [0;1;0],overlap);

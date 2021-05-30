@@ -122,7 +122,7 @@ function get1DProlongationCellCentered(ncells_fine::Int64)
 	end
 	nc = div(n,2);
 	if 2*nc != n
-		error("Err: get1DProlongationCellCentered(): size should be a multiplication of 2");
+		error("n = ",n,". Err: get1DProlongationCellCentered(): size should be a multiplication of 2");
 	end
 	#P  = spdiagm(((1/4)*ones(n-2),(3/4)*ones(n-1),(3/4)*ones(n),(1/4)*ones(n-1)),[-2,-1,0,1],n,n);
 	P = spdiagm(-2=> fill(.25,n-2), -1=>fill(.75,n-1), 0=>fill(.75,n-1) , 1=>fill(.25,n-1));

@@ -17,13 +17,14 @@ uuid = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
 
 [[KrylovMethods]]
 deps = ["LinearAlgebra", "Printf", "SparseArrays"]
-git-tree-sha1 = "feba5b697cec0b6c8784ed3ee4542cf8493f0471"
+git-tree-sha1 = "ceb12d552f1d2a1d6395c771cee0e0bc3b069e08"
 repo-rev = "master"
 repo-url = "https://github.com/JuliaInv/KrylovMethods.jl.git"
 uuid = "9a2cd570-f05c-5dc1-9209-93ad6f5727f7"
 version = "0.6.0"
 
 [[LibGit2]]
+deps = ["Printf"]
 uuid = "76f85450-5226-5b5a-8eaa-529ad045b433"
 
 [[Libdl]]

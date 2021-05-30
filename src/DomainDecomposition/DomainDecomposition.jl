@@ -8,6 +8,7 @@ import jInv.LinearSolvers.solveLinearSystem
 import jInv.LinearSolvers.solveLinearSystem!
 import jInv.LinearSolvers.copySolver;
 using Multigrid
+using Multigrid.ParallelJuliaSolver
 using Distributed
 using KrylovMethods
 
@@ -32,6 +33,7 @@ mutable struct DomainDecompositionParam <: AbstractSolver
 	overlap   			::Array{Int64,1}
 	getIndicesOfCell	::Function
 	Ainv				::AbstractSolver
+	getSubDomainMass	::Function
 	workers				::Array{Int64}
 	constructor			::Any
 	out					::Int64
@@ -41,8 +43,8 @@ mutable struct DomainDecompositionParam <: AbstractSolver
 	nSolve				::Int
 	solveTime			::Real
 end
-function getDomainDecompositionParam(Mesh,numDomains,overlap,getIndicesOfCell,Ainv::AbstractSolver)
-	return DomainDecompositionParam((DomainDecompositionPreconditionerParam)[],[],Mesh,numDomains,overlap,getIndicesOfCell,Ainv,(Int64)[],getEmptyCtor(),0,0,0,0.0,0,0.0);
+function getDomainDecompositionParam(Mesh,numDomains,overlap,getIndicesOfCell,Ainv::AbstractSolver,getMass::Function = identity)
+	return DomainDecompositionParam((DomainDecompositionPreconditionerParam)[],[],Mesh,numDomains,overlap,getIndicesOfCell,Ainv,getMass,(Int64)[],getEmptyCtor(),0,0,0,0.0,0,0.0);
 end
 mutable struct DomainDecompositionOperatorConstructor
 	problem_param	::Any
@@ -85,6 +87,12 @@ function clear!(s::DomainDecompositionParam)
 end
 
 
+import jInv.LinearSolvers.setupSolver
+function setupSolver(A::SparseMatrixCSC,DDparam::DomainDecompositionParam)
+	return setupDDSerial(sparse(A'),DDparam);
+end
+
+
 import jInv.LinearSolvers.solveLinearSystem!;
 function solveLinearSystem!(At,B,X,param::DomainDecompositionParam,doTranspose=0)
 	
@@ -95,7 +103,7 @@ function solveLinearSystem!(At,B,X,param::DomainDecompositionParam,doTranspose=0
 	if isempty(param)
 		setupDDSerial(At,param);
 	end 
-
+	flag = 0; rnorm = 0.0; iter = 0; resvec = [];
 	if !isempty(B)
 		if issparse(B)
 			B = full(B);
@@ -105,14 +113,14 @@ function solveLinearSystem!(At,B,X,param::DomainDecompositionParam,doTranspose=0
 		end
 		if norm(B) == 0.0
 			X[:] .= 0.0;
-			return X, param;
+			return X, param,flag,rnorm,iter,resvec;
 		end
 		Prec = r->solveDDSerial(At,r,zeros(eltype(X),size(X)),param,1,doTranspose)[1];
-		x, flag,rnorm,iter = KrylovMethods.fgmres(getAfun(At,zeros(eltype(X),size(X)),4),B,10,tol = 1e-10,maxIter = 5,M = Prec, x = X,out=2,flexible=true);
-		
+		# Prec = r->solveGSDDSerial(At,r,zeros(eltype(X),size(X)),param,1,doTranspose)[1];
+		X,flag,rnorm,iter,resvec = KrylovMethods.fgmres(getAfun(At,zeros(eltype(X),size(X)),4),B,5,tol = 1e-6,maxIter = 100,M = Prec, x = X,out=2,flexible=true);
 		# solveDD(At,B,X,param,doTranspose)
 	end	
-	return X, param
+	return X,param,flag,rnorm,iter,resvec
 end 
 
 
