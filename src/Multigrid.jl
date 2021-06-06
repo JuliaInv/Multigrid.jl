@@ -3,6 +3,8 @@ module Multigrid
 	using SparseArrays
 	using Statistics
 	using ParSpMatVec;
+	using jInv.LinearSolvers
+	using jInv.Utils
 	
 	const global hasParSpMatVec = ParSpMatVec.isBuilt();
 	if hasParSpMatVec == false
@@ -12,6 +14,7 @@ module Multigrid
 	import jInv.LinearSolvers.JuliaSolver, jInv.LinearSolvers.getJuliaSolver 
 	import jInv.LinearSolvers.AbstractSolver
 	import jInv.LinearSolvers.solveLinearSystem!,jInv.LinearSolvers.solveLinearSystem, jInv.LinearSolvers.setupSolver
+	import jInv.Utils.clear!
 	
 	SparseCSCTypes = Union{SparseMatrixCSC{ComplexF64,Int64},SparseMatrixCSC{Float64,Int64},SparseMatrixCSC{ComplexF32,Int64},SparseMatrixCSC{Float32,Int64}}
 	ArrayTypes = Union{Array{ComplexF64},Array{ComplexF32},Array{Float64},Array{Float32}}

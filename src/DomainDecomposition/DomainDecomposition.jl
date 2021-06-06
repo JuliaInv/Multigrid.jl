@@ -117,7 +117,7 @@ function solveLinearSystem!(At,B,X,param::DomainDecompositionParam,doTranspose=0
 		end
 		Prec = r->solveDDSerial(At,r,zeros(eltype(X),size(X)),param,1,doTranspose)[1];
 		# Prec = r->solveGSDDSerial(At,r,zeros(eltype(X),size(X)),param,1,doTranspose)[1];
-		X,flag,rnorm,iter,resvec = KrylovMethods.fgmres(getAfun(At,zeros(eltype(X),size(X)),4),B,5,tol = 1e-6,maxIter = 100,M = Prec, x = X,out=2,flexible=true);
+		X,flag,rnorm,iter,resvec = KrylovMethods.fgmres(getAfun(At,zeros(eltype(X),size(X)),4),B,5,tol = 1e-6,maxIter = 100,M = Prec, x = X,out=1,flexible=true);
 		# solveDD(At,B,X,param,doTranspose)
 	end	
 	return X,param,flag,rnorm,iter,resvec

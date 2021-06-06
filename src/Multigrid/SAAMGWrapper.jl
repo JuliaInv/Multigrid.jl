@@ -1,4 +1,4 @@
-export SA_AMGsolver,getSA_AMGsolver,copySolver
+export SA_AMGsolver,getSA_AMGsolver
 export solveLinearSystem!,clear!,copySolver
 
 ## this is a wrapper for using the SA AMG preconditioner using the abstractSolver interface. 
@@ -25,7 +25,7 @@ function getSA_AMGsolver(MG::MGparam{VAL,IND},Krylov::String="BiCGSTAB"; sym::In
 	return SA_AMGsolver{VAL,IND}(MG,Krylov,sym,out,false,0,MG.relativeTol,0,0.0,0.0);
 end
 
-import Multigrid.solveLinearSystem!;
+import jInv.LinearSolvers.solveLinearSystem!;
 function solveLinearSystem!(A,B::Array{VAL},X::Array{VAL},param::SA_AMGsolver{VAL,IND},doTranspose=0) where {VAL,IND}
 	if issparse(B)
 		B = full(B);
@@ -81,7 +81,7 @@ function solveLinearSystem!(A,B::Array{VAL},X::Array{VAL},param::SA_AMGsolver{VA
 end 
 
 
-
+import jInv.LinearSolvers.copySolver
 function copySolver(s::SA_AMGsolver)
 	# copies absolutely what's necessary.
 	return SA_AMGsolver(Multigrid.copySolver(s.MG),s.Krylov,s.sym,s.out,s.isTranspose,s.doClear,s.tol,0,0.0,0.0);

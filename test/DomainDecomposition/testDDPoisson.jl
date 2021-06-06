@@ -20,7 +20,7 @@ include("DDPoissonFuncs.jl");
 println("************************************************* Dirichlet DomainDecomposition for Poisson 2D ******************************************************");
 
 domain = [0.0, 1.0, 0.0, 1.0];
-n = [128,128];
+n = [32,32];
 Mr = getRegularMesh(domain,n)
 G = getNodalGradientMatrix(Mr);
 Ar = G'*G;

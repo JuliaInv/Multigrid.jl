@@ -11,6 +11,9 @@
     @testset "testLinSolveMGWrapper.jl" begin
         include("testLinSolveMGWrapper.jl")
     end
+	@testset "testLinSolveAMGWrapper.jl" begin
+        include("testLinSolveAMGWrapper.jl")
+    end
 	@testset "testGMGRAPforElasticity.jl" begin
        include("testGMGRAPforElasticity.jl")
     end
@@ -26,5 +29,4 @@
 	@testset "testHybridKaczmarz.jl" begin
        include("testHybridKaczmarz.jl")
     end
-	
 end

@@ -36,10 +36,12 @@ end
 
 function performSetup(i::Array{Int64}, AI::DomainDecompositionOperatorConstructor,  DDparam::DomainDecompositionParam)
 	AII = AI.getOperator(AI.problem_param);
-	DirichletMass = AI.getDirichletMass(DDparam,AI.problem_param,i)[:];
-	AII_new = sparse(AII + Diagonal(DirichletMass));
-	DDPrec = DomainDecompositionPreconditionerParam(AI.problem_param,i,AII_new,DirichletMass,copySolver(DDparam.Ainv))
-	DDPrec.Ainv = setupSolver(AII_new,DDPrec.Ainv);
+	if AI.getDirichletMass !=identity
+		DirichletMass = AI.getDirichletMass(DDparam,AI.problem_param,i)[:];
+		AII = AII + sparse(Diagonal(DirichletMass));
+	end
+	DDPrec = DomainDecompositionPreconditionerParam(AI.problem_param,i,AII,DirichletMass,copySolver(DDparam.Ainv))
+	DDPrec.Ainv = setupSolver(AII,DDPrec.Ainv);
 	# println("setup for sub domain: ",i," by ",myid());
 	return DDPrec;
 end

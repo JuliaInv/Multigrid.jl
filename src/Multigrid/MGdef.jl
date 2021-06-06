@@ -4,6 +4,7 @@ using Multigrid.DomainDecomposition
 
 import jInv.LinearSolvers.copySolver;
 import jInv.LinearSolvers.AbstractSolver;
+import jInv.Utils.clear!
 import Base.copy
 
 export MGparam;
@@ -122,6 +123,7 @@ include("SA-AMG.jl");
 include("MGcycle.jl");
 include("SolveFuncs.jl");
 include("SAAMGWrapper.jl");
+include("MGWrapper.jl");
 include("Systems.jl");
 include("parRelax.jl");
 include("Vanka.jl");

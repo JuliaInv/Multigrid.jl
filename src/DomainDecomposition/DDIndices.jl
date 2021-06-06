@@ -133,7 +133,7 @@ function getNodalIndicesOfCell(NumCells::Array{Int64,1},overlap::Array{Int64,1},
 		# originalUpperLeftCorner = [(i[1]-1)*div(nc[1],NumCells[1]) + 1,(i[2]-1)*div(nc[2],NumCells[2]) + 1];
 		# originalBottomRightCorner = originalUpperLeftCorner + [div(nc[1],NumCells[1]),div(nc[2],NumCells[2])];
 		(originalUpperLeftCorner,originalBottomRightCorner) = getOriginalBoundingBoxCells(NumCells,overlap,i,nc);
-		(UpperLeftCorner,BottomRightCorner) = getBoxWithOverlap(originalUpperLeftCorner,originalBottomRightCorner,nc .+ [1;1],overlap);
+		(UpperLeftCorner,BottomRightCorner) = getBoxWithOverlap(originalUpperLeftCorner,originalBottomRightCorner.+ [1;1],nc .+ [1;1],overlap);
 		I1,I2 = getBoxIdxs(UpperLeftCorner,BottomRightCorner);
 		indNodal = I1[:] + (I2[:].-1)*(nc[1]+1)
 	else
@@ -141,7 +141,7 @@ function getNodalIndicesOfCell(NumCells::Array{Int64,1},overlap::Array{Int64,1},
 		# originalBottomRightCorner = originalUpperLeftCorner + [div(nc[1],NumCells[1]),div(nc[2],NumCells[2]),div(nc[3],NumCells[3])];
 		(originalUpperLeftCorner,originalBottomRightCorner) = getOriginalBoundingBoxCells(NumCells,overlap,i,nc);
 		# NODES X NODES X NODES
-		(UpperLeftCorner,BottomRightCorner) = getBoxWithOverlap(originalUpperLeftCorner,originalBottomRightCorner,nc + [1;1;1],overlap);
+		(UpperLeftCorner,BottomRightCorner) = getBoxWithOverlap(originalUpperLeftCorner,originalBottomRightCorner.+ [1;1],nc + [1;1;1],overlap);
 		I1,I2,I3 = getBoxIdxs(UpperLeftCorner,BottomRightCorner);
 		indNodal = I1[:] + (I2[:].-1)*(nc[1]+1) + (I3[:].-1)*((nc[1]+1)*(nc[1]+1));
 	end
@@ -156,7 +156,7 @@ function getDirichletMassNodal(NumCells::Array{Int64},overlap::Array{Int64},i::A
 		# originalUpperLeftCorner = [(i[1]-1)*div(nc[1],NumCells[1]) + 1,(i[2]-1)*div(nc[2],NumCells[2]) + 1];
 		# originalBottomRightCorner = originalUpperLeftCorner + [div(nc[1],NumCells[1]),div(nc[2],NumCells[2])];
 		(originalUpperLeftCorner,originalBottomRightCorner) = getOriginalBoundingBoxCells(NumCells,overlap,i,nc);
-		(UpperLeftCorner,BottomRightCorner) = getBoxWithOverlap(originalUpperLeftCorner,originalBottomRightCorner,nc .+ [1;1],overlap);
+		(UpperLeftCorner,BottomRightCorner) = getBoxWithOverlap(originalUpperLeftCorner,originalBottomRightCorner .+ [1;1],nc .+ [1;1],overlap);
 		size = BottomRightCorner-UpperLeftCorner.+1;
 		mass = zeros(Float64,tuple(size...));
 		if UpperLeftCorner[1]>1
@@ -176,7 +176,7 @@ function getDirichletMassNodal(NumCells::Array{Int64},overlap::Array{Int64},i::A
 		# originalUpperLeftCorner = [(i[1]-1)*div(nc[1],NumCells[1]) + 1,(i[2]-1)*div(nc[2],NumCells[2]) + 1,(i[3]-1)*div(nc[3],NumCells[3]) + 1];
 		# originalBottomRightCorner = originalUpperLeftCorner + [div(nc[1],NumCells[1]),div(nc[2],NumCells[2]),div(nc[3],NumCells[3])];
 		# # NODES X NODES X NODES
-		# (UpperLeftCorner,BottomRightCorner) = getBoxWithOverlap(originalUpperLeftCorner,originalBottomRightCorner,nc + [1;1;1],overlap);
+		# (UpperLeftCorner,BottomRightCorner) = getBoxWithOverlap(originalUpperLeftCorner,originalBottomRightCorner+ [1;1;1],nc + [1;1;1],overlap);
 	end
 	return mass;
 end

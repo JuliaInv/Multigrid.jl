@@ -245,7 +245,7 @@ for l = 1:(param.levels-1)
 		withCellsBlock = true;
 	end
 	Mesh_l = isempty(param.Meshes) ? [] : param.Meshes[l];
-	param.relaxPrecs[l] = getRelaxPrec(AT,VAL,param.relaxType,relaxParamArr[l],Mesh_l,withCellsBlock);
+	param.relaxPrecs[l] = getRelaxPrec(AT,param.relaxType,relaxParamArr[l],Mesh_l,withCellsBlock);
 	
 	Act = param.Ps[l]*AT*param.Rs[l];
 	param.As[l+1] = Act;

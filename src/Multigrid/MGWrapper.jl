@@ -1,4 +1,4 @@
-export MGsolver,getMGsolver,copySolver
+export MGsolver,getMGsolver
 export solveLinearSystem!,clear!,copySolver, setupSolver
 
 ## this is a wrapper for using the SA AMG preconditioner using the abstractSolver interface. 
@@ -6,6 +6,7 @@ export solveLinearSystem!,clear!,copySolver, setupSolver
 mutable struct MGsolver{VAL,IND} <: AbstractSolver 
 	MG				:: MGparam{VAL,IND}
 	Krylov			:: String
+	sym				:: Int64  #0=unsymmetric, 1=symm. pos def, 2=general symmetric
 	out				:: Int64
 	isTranspose 	:: Bool # if true, transpose(A) is provided to solver. If not, A is transposed 
 							# note that A_mul_B! is slower than Ac_mul_B for SparseMatrixCSC
@@ -17,13 +18,13 @@ mutable struct MGsolver{VAL,IND} <: AbstractSolver
 end
 
 
-function getMGsolver(MG::MGparam{VAL,IND},Mesh::RegularMesh,Krylov::String="GMRES"; out::Int64 =-1) where {VAL,IND}
+function getMGsolver(MG::MGparam{VAL,IND},Mesh::RegularMesh,sym,Krylov::String="GMRES"; out::Int64 =-1) where {VAL,IND}
 	MG.Meshes = [Mesh];
-	return MGsolver{VAL,IND}(MG,Krylov,out,false,0,MG.relativeTol,0,0.0,0.0);
+	return MGsolver{VAL,IND}(MG,Krylov,sym,out,false,0,MG.relativeTol,0,0.0,0.0);
 end
 
-import Multigrid.solveLinearSystem!;
-function solveLinearSystem!(A,B::Array{VAL},X::Array{VAL},param::SA_AMGsolver{VAL,IND},doTranspose=0) where {VAL,IND}
+import jInv.LinearSolvers.solveLinearSystem!;
+function solveLinearSystem!(A,B::Array{VAL},X::Array{VAL},param::MGsolver{VAL,IND},doTranspose=0) where {VAL,IND}
 	if issparse(B)
 		B = full(B);
 	end
@@ -53,7 +54,7 @@ function solveLinearSystem!(A,B::Array{VAL},X::Array{VAL},param::SA_AMGsolver{VA
 		elseif (param.sym != 1) && (doTransposeIterative == 0)
 			A = sparse(A');
 		end
-		param.timeSetup += @elapsed SA_AMGsetup(A,param.MG,param.sym==1,nrhs,verbose);
+		param.timeSetup += @elapsed MGsetup(A,param.MG.Meshes[1],param.MG,nrhs,verbose);
 		param.MG.doTranspose = doTranspose; # the doTranspose of MG MUST be synced with the doTranspose of the interface.
 	end 
 	
@@ -65,6 +66,8 @@ function solveLinearSystem!(A,B::Array{VAL},X::Array{VAL},param::SA_AMGsolver{VA
 	time = time_ns();
 	if param.Krylov=="BiCGSTAB"
 		X, param.MG,num_iter = solveBiCGSTAB_MG(Afun,param.MG,B,X,verbose);
+	elseif param.Krylov=="GMRES"
+		X, param.MG,num_iter = solveGMRES_MG(Afun,param.MG,B,X,true,5,verbose);
 	elseif param.Krylov=="PCG"
 		X, param.MG,num_iter = solveCG_MG(Afun,param.MG,B,X,verbose);
 	end
@@ -77,19 +80,20 @@ function solveLinearSystem!(A,B::Array{VAL},X::Array{VAL},param::SA_AMGsolver{VA
 	return X, param
 end 
 
-function setupSolver(AT::SparseMatrixCSC, s::MGsolver)
+function setupSolver(AT::SparseMatrixCSC, s::MGsolver{VAL,IND}) where {VAL,IND}
 	s.MG = MGsetup(AT,s.MG.Meshes[1],s.MG,1,s.out>0);
 	return s;
 end
 
-function copySolver(s::MGsolver)
+import jInv.LinearSolvers.copySolver
+function copySolver(s::MGsolver{VAL,IND}) where {VAL,IND}
 	# copies absolutely what's necessary.
-	return MGsolver(Multigrid.copySolver(s.MG),s.Krylov,s.sym,s.out,s.isTranspose,s.doClear,s.tol,0,0.0,0.0);
+	return MGsolver(Multigrid.copySolver(s.MG),copy(s.MG.Meshes[1]),s.sym,s.Krylov,s.out,s.isTranspose,s.doClear,s.tol,0,0.0,0.0);
 end
 
 
 import jInv.Utils.clear!
-function clear!(s::MGSolver)
+function clear!(s::MGsolver{VAL,IND}) where {VAL,IND}
 	 clear!(s.MG);
 	 s.doClear = 0;
 end

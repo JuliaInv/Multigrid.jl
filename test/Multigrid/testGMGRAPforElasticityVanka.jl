@@ -92,11 +92,11 @@ n = [8,8,8];
 Mr = getRegularMesh(domain,n)
 mu = 1.0*ones(prod(Mr.n));
 # lambda = 10.0.*mu;
-lambda = 2.0.*mu;
+lambda = 1.0.*mu;
 Ar = GetLinearElasticityOperatorMixedFormulation(Mr, mu,lambda);
-Ar = Ar + 1e-3*opnorm(Ar,1)*sparse(1.0I,size(Ar,2),size(Ar,2));
+Ar = Ar + 1e-2*opnorm(Ar,1)*sparse(1.0I,size(Ar,2),size(Ar,2));
 MG.relaxType = "VankaFaces";
-MG.relaxParam = 0.75;
+MG.relaxParam = 0.5;
 
 N = size(Ar,2);
 b = Ar*rand(N); b = b/norm(b);
