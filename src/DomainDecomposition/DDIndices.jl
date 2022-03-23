@@ -32,7 +32,7 @@ function getOriginalBoundingBoxCells(NumCells::Array{Int64,1},overlap::Array{Int
 	cellSize = div.(nc,NumCells);
 	originalUpperLeftCorner = (i.-1).*cellSize .+ 1;
 	originalBottomRightCorner = originalUpperLeftCorner .+ (cellSize.-1);
-	originalBottomRightCorner[i.==NumCells] .== nc[i.==NumCells];
+	originalBottomRightCorner[i.==NumCells] .= nc[i.==NumCells];
 	return (originalUpperLeftCorner,originalBottomRightCorner);
 	# if length(nc)==2
 		# originalUpperLeftCorner = [(i[1]-1)*cellSize[1] + 1,(i[2]-1)*cellSize[2] + 1];

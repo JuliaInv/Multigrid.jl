@@ -39,8 +39,15 @@ end
 	outfile1 = joinpath(builddir,"Vanka.dll")
 	outfile2 = joinpath(builddir,"parRelax.dll")
 	outfile3 = joinpath(builddir,"parLU.dll")
+	## This is needed for Cygwin
+	src1 = replace(src1, "\\" => "/")
+	src2 = replace(src2, "\\" => "/")
+	src3 = replace(src3, "\\" => "/")
+	
+	#println(string("gcc -O3 -cpp -fopenmp -shared -DBUILD_DLL"," ",src1," -o ",outfile1)) 
 	println("gcc version")
 	run(`gcc --version`)
+	
 	run(`gcc -O3 -cpp -fopenmp -shared -DBUILD_DLL  $src1 -o $outfile1`)
 	run(`gcc -O3 -cpp -fopenmp -shared -DBUILD_DLL  $src2 -o $outfile2`)
 	run(`g++ -O3 -cpp -fopenmp -shared -DBUILD_DLL  $src3 -o $outfile3`)

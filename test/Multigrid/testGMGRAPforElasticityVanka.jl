@@ -35,10 +35,12 @@ x = zeros(N);
 MGsetup(Ar,Mr,MG,size(b,2),true);
 println("****************************** Stand-alone GMG RAP: ******************************")
 solveMG(MG,b,x,true);
+#println(norm(Ar*x - b))
 @test norm(Ar*x - b) < 0.05;
 println("****************************** GMG + CG: ******************************")
 x[:].=0.0;
 solveCG_MG(Ar,MG,b,x,true)
+#println(norm(Ar*x - b))
 @test norm(Ar*x - b) < 0.01;
 
 

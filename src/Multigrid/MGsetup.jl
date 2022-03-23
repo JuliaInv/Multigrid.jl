@@ -12,7 +12,6 @@ Meshes  	= Array{RegularMesh}(undef,param.levels);
 relaxPrecs 	= Array{Any}(undef,param.levels);
 
 tt = typeof(param.relaxParam);
-
 if isa(param.relaxParam,Array)==false
 	relaxParamArr = Array{tt}(undef,param.levels);
 	for k=1:param.levels
@@ -320,10 +319,8 @@ function defineCoarsestAinv(param::MGparam{VAL,IND},AT::SparseMatrixCSC{VAL,IND}
 if isa(param.LU,DomainDecompositionParam)
 	param.LU.Mesh = param.Meshes[end];
 	param.LU = setupDDSerial(AT,param.LU);
-	println("Done coarsest setup");
 elseif isa(param.LU,AbstractSolver)
 	param.LU = setupSolver(sparse(AT'),param.LU);
-	println("Done coarsest setup");
 else
 	if param.coarseSolveType == "MUMPS"
 		param.LU = factorMUMPS(AT',0,0);

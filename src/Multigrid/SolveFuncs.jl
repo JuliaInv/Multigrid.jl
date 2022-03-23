@@ -3,30 +3,29 @@ export solveMG,solveGMRES_MG,solveBiCGSTAB_MG,solveCG_MG,getAfun
 function solveMG(param::MGparam{VAL,IND},b::Array{VAL},x::Array{VAL},verbose::Bool) where {VAL,IND}
 #MGType = getMGType(param,b);
 
-
 param = adjustMemoryForNumRHS(param,size(b,2));
 tol = param.relativeTol;
 numCores = param.numCores;
 oneType = one(VAL);
 zeroType = zero(VAL);
 maxIter = param.maxOuterIter;
-A = param.As[1];
+AT = param.As[1];
 r = param.memCycle[1].r;
 r[:] = b;
-
 if norm(x)==0	
     res = norm(b);
     res_init = res;
 else
-	SpMatMul(-oneType,A,x,oneType,r,numCores)#  r -= A'*x;
+	SpMatMul(-oneType,AT,x,oneType,r,numCores)#  r -= A'*x;
     res = norm(r);
     res_init = res;
 end
-
+iter = 0;
 for count = 1:maxIter
 	x = recursiveCycle(param,b,x,1);
-	SpMatMul(-oneType,A,x,zeroType,r,numCores); #  r = -A'*x;
+	SpMatMul(-oneType,AT,x,zeroType,r,numCores); #  r = -A'*x;
 	addVectors(oneType,b,r); # r = r + b;
+	iter+=1;
 	res_prev = res;
 	res = norm(r);
 	if verbose
@@ -36,7 +35,7 @@ for count = 1:maxIter
 		break;
 	end
 end
-return x,param;
+return x,param,iter;
 end
 ####################################################################################################################
 # this function checks if the memory allocated in param fits the nrhs and generates a function for applying the cycle.

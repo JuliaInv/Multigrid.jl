@@ -134,8 +134,12 @@ function Multigrid.copySolver(MG::MGparam)
 copies the solver parameters without the setup and allocated memory.
 """
 function copySolver(MG::MGparam{VAL,IND}) where {VAL,IND}
-return getMGparam(VAL,IND,MG.levels,MG.numCores,MG.maxOuterIter,MG.relativeTol,MG.relaxType,MG.relaxParam,
+	newMG = getMGparam(VAL,IND,MG.levels,MG.numCores,MG.maxOuterIter,MG.relativeTol,MG.relaxType,MG.relaxParam,
 					MG.relaxPre,MG.relaxPost,MG.cycleType,MG.coarseSolveType,MG.strongConnParam,MG.FilteringParam,MG.transferOperatorType);
+	if isa(MG.LU,AbstractSolver)
+		newMG.LU = copySolver(MG.LU);
+	end
+	return newMG;
 end
 
 

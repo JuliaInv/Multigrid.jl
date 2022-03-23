@@ -19,14 +19,19 @@ end
 return r;
 end
 
-function performSetup(i::Array{Int64}, AI::SparseMatrixCSC,  DDparam::DomainDecompositionParam)
+function performSetup(i::Array{Int64}, AI::SparseMatrixCSC,  DDparam::DomainDecompositionParam,subMesh::RegularMesh)
 	# println("setupping sub domain: ",i," by ",myid());
 	if DDparam.getSubDomainMass!=identity
 		AI = AI + DDparam.getSubDomainMass(DDparam,i);
 	end
 	DDPrec = DomainDecompositionPreconditionerParam([],i,AI,[],copySolver(DDparam.Ainv))
-	DDPrec.Ainv = setupSolver(AI,DDPrec.Ainv);
-
+	if isa(DDPrec.Ainv,MGsolver)
+		DDPrec.Ainv.MG.Meshes = [subMesh];	
+		AI = sparse(AI');
+		DDPrec.Ainv = setupSolver(AI,DDPrec.Ainv);
+	else
+		DDPrec.Ainv = setupSolver(AI,DDPrec.Ainv);
+	end
 	if isa(DDPrec.Ainv,ParallelJuliaSolver.parallelJuliaSolver)
 		DDPrec.A_i = spzeros(0,0);
 	end
@@ -34,33 +39,42 @@ function performSetup(i::Array{Int64}, AI::SparseMatrixCSC,  DDparam::DomainDeco
 	return DDPrec;
 end
 
-function performSetup(i::Array{Int64}, AI::DomainDecompositionOperatorConstructor,  DDparam::DomainDecompositionParam)
+function performSetup(i::Array{Int64}, AI::DomainDecompositionOperatorConstructor,  DDparam::DomainDecompositionParam,subMesh::RegularMesh)
 	AII = AI.getOperator(AI.problem_param);
 	if AI.getDirichletMass !=identity
 		DirichletMass = AI.getDirichletMass(DDparam,AI.problem_param,i)[:];
 		AII = AII + sparse(Diagonal(DirichletMass));
 	end
 	DDPrec = DomainDecompositionPreconditionerParam(AI.problem_param,i,AII,DirichletMass,copySolver(DDparam.Ainv))
-	DDPrec.Ainv = setupSolver(AII,DDPrec.Ainv);
+	if isa(DDPrec.Ainv,MGsolver)
+		DDPrec.Ainv.MG.Meshes = [subMesh];
+		AII = sparse(AII');
+		DDPrec.Ainv = setupSolver(AII,DDPrec.Ainv);
+	else
+		DDPrec.Ainv = setupSolver(AII,DDPrec.Ainv);
+	end
+	if isa(DDPrec.Ainv,ParallelJuliaSolver.parallelJuliaSolver)
+		DDPrec.A_i = spzeros(0,0);
+	end
 	# println("setup for sub domain: ",i," by ",myid());
 	return DDPrec;
 end
 
 
 
-function computeResidual(precParam::DomainDecompositionPreconditionerParam, x, r)
-	# r is initialized by b and overrun here
-	r .-= precParam.A_i'*x;
+# function computeResidual(precParam::DomainDecompositionPreconditionerParam, x, r)
+	# # r is initialized by b and overrun here
+	# r .-= precParam.A_i'*x;
 	
 	
-	# AT = precParam.A_i
-	# for t = 1:length(r)
-		# for tt = AT.colptr[t]:AT.colptr[t+1]-1
-			# r[t] = r[t] - conj(AT.nzval[tt])*x[AT.rowval[tt]];
-		# end
-	# end
-	return r;
-end
+	# # AT = precParam.A_i
+	# # for t = 1:length(r)
+		# # for tt = AT.colptr[t]:AT.colptr[t+1]-1
+			# # r[t] = r[t] - conj(AT.nzval[tt])*x[AT.rowval[tt]];
+		# # end
+	# # end
+	# return r;
+# end
 
 
 
@@ -72,15 +86,16 @@ DDPreconditioners 	= Array{DomainDecompositionPreconditionerParam}(undef,prod(nu
 DDparam.GlobalIndices = Array{Array{DDIndType}}(undef,prod(numDomains));
 n = M.n;
 for ii = 1:prod(numDomains)
-	i = cs2loc(ii,numDomains);
-	IIp = DDparam.getIndicesOfCell(numDomains,overlap, i,n);
+	i 		= cs2loc(ii,numDomains);
+	IIp 	= DDparam.getIndicesOfCell(numDomains,overlap, i,n);
+	subMesh = getSubMeshOfCell(numDomains,overlap,i,M);
 	if isa(AT,SparseMatrixCSC)==true
 		AI = sparse(AT[IIp,IIp]');
-		DDPreconditioners[ii] = performSetup(i, AI,  DDparam);
+		DDPreconditioners[ii] = performSetup(i, AI,  DDparam,subMesh);
 	else
 		subparams = AT.getSubParams(AT.problem_param, M,i,numDomains,overlap);
 		AI = DomainDecompositionOperatorConstructor(subparams,AT.getSubParams,AT.getOperator,AT.getDirichletMass);
-		DDPreconditioners[ii] = performSetup(i, AI,  DDparam);
+		DDPreconditioners[ii] = performSetup(i, AI,  DDparam,subMesh);
 	end
 	IIp = convert(Array{DDIndType},IIp);
 	DDparam.GlobalIndices[ii] = IIp;

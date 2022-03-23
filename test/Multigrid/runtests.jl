@@ -16,11 +16,12 @@
     end
 	@testset "testGMGRAPforElasticity.jl" begin
        include("testGMGRAPforElasticity.jl")
-    end
+    end 
+    
 	@testset "testGMGforElasticity.jl" begin
        include("testGMGforElasticity.jl")
-    end
-	@testset "testGMGRAPforElasticityVanka.jl" begin
+    end 
+    @testset "testGMGRAPforElasticityVanka.jl" begin
         include("testGMGRAPforElasticityVanka.jl")
     end
 	@testset "testGMGforElasticityVanka.jl" begin

@@ -74,7 +74,7 @@ end
 import jInv.LinearSolvers.copySolver;
 function copySolver(s::DomainDecompositionParam)
 	# copies absolutely what's necessary.
-	error("TODO");
+	getDomainDecompositionParam(s.Mesh,s.numDomains,s.overlap,s.getIndicesOfCell,copySolver(s.Ainv),s.getSubDomainMass);
 end
 
 

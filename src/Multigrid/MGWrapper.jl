@@ -35,7 +35,7 @@ function solveLinearSystem!(A,B::Array{VAL},X::Array{VAL},param::MGsolver{VAL,IN
 		clear!(param.MG);
 	end
 	if norm(B) == 0.0
-		X[:] = 0.0;
+		X[:] .= 0.0;
 		return X, param;
 	end
 	n = size(B,1)
@@ -52,6 +52,7 @@ function solveLinearSystem!(A,B::Array{VAL},X::Array{VAL},param::MGsolver{VAL,IN
 		if (param.sym==1) ||  ((param.sym != 1) && (doTransposeIterative == 1)) 
 			# this means that we're OK with using Ac_mul_B! in iterative methods, hence, MG is also OK.
 		elseif (param.sym != 1) && (doTransposeIterative == 0)
+			println("Transposing!!!")
 			A = sparse(A');
 		end
 		param.timeSetup += @elapsed MGsetup(A,param.MG.Meshes[1],param.MG,nrhs,verbose);
@@ -62,21 +63,25 @@ function solveLinearSystem!(A,B::Array{VAL},X::Array{VAL},param::MGsolver{VAL,IN
 		param.timeSetup += @elapsed transposeHierarchy(param.MG);
 	end
 	BLAS.set_num_threads(param.MG.numCores);
-	Afun = getAfun(param.MG.As[1],zeros(VAL,size(B)),param.MG.numCores);
 	time = time_ns();
 	if param.Krylov=="BiCGSTAB"
+		Afun = getAfun(param.MG.As[1],zeros(VAL,size(B)),param.MG.numCores);
 		X, param.MG,num_iter = solveBiCGSTAB_MG(Afun,param.MG,B,X,verbose);
 	elseif param.Krylov=="GMRES"
+		Afun = getAfun(param.MG.As[1],zeros(VAL,size(B)),param.MG.numCores);
 		X, param.MG,num_iter = solveGMRES_MG(Afun,param.MG,B,X,true,5,verbose);
 	elseif param.Krylov=="PCG"
+		Afun = getAfun(param.MG.As[1],zeros(VAL,size(B)),param.MG.numCores);
 		X, param.MG,num_iter = solveCG_MG(Afun,param.MG,B,X,verbose);
+	else
+		X, param.MG,num_iter = solveMG(param.MG,B,X,verbose);
 	end
 	param.nIter += num_iter*size(X,2);
 	param.timeSolve+=(time_ns() - time)/1e+9;
 
-	if num_iter >= param.MG.maxOuterIter - 1
-		warn("MG solver reached maximum iterations without convergence");
-	end
+	# if num_iter >= param.MG.maxOuterIter - 1
+		# warn("MG solver reached maximum iterations without convergence");
+	# end
 	return X, param
 end 
 
@@ -88,7 +93,7 @@ end
 import jInv.LinearSolvers.copySolver
 function copySolver(s::MGsolver{VAL,IND}) where {VAL,IND}
 	# copies absolutely what's necessary.
-	return MGsolver(Multigrid.copySolver(s.MG),copy(s.MG.Meshes[1]),s.sym,s.Krylov,s.out,s.isTranspose,s.doClear,s.tol,0,0.0,0.0);
+	return MGsolver(Multigrid.copySolver(s.MG),s.Krylov,s.sym,s.out,s.isTranspose,s.doClear,s.tol,0,0.0,0.0);
 end
 
 

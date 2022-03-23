@@ -40,13 +40,14 @@ DDparam.GlobalIndices = Array{Array{DDIndType}}(undef,prod(numDomains));
 					# println("For cell ",i," we need worker ",ActualWorkers[worker_index],", and we have ",p)
 					if ActualWorkers[worker_index] == p
 						IIp = DDparam.getIndicesOfCell(numDomains,overlap, i,n);
+						subMesh = getSubMeshOfCell(numDomains,overlap,i,M);
 						if isa(AT,SparseMatrixCSC)==true
 							AI = sparse(AT[IIp,IIp]');
-							DDPreconditioners[ii] = initRemoteChannel(performSetup,p,i, AI,  DDparam);
+							DDPreconditioners[ii] = initRemoteChannel(performSetup,p,i, AI,  DDparam,subMesh);
 						else
 							subparams = AT.getSubParams(AT.problem_param, M,i,numDomains,overlap);
 							AI = DomainDecompositionOperatorConstructor(subparams,AT.getSubParams,AT.getOperator,AT.getDirichletMass);
-							DDPreconditioners[ii] = initRemoteChannel(performSetup,p,i, AI,  DDparam);
+							DDPreconditioners[ii] = initRemoteChannel(performSetup,p,i, AI,  DDparam,subMesh);
 						end
 						IIp = convert(Array{DDIndType},IIp);
 						DDparam.GlobalIndices[ii] = IIp;
