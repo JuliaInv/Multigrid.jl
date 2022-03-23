@@ -1,7 +1,7 @@
 name = "Multigrid"
 uuid = "3ee21790-adf8-11e9-0909-2103a2f09851"
 authors = ["Eran Treister <erantreister@gmail.com>"]
-version = "0.7.0"
+version = "0.8.0"
 
 [deps]
 Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
