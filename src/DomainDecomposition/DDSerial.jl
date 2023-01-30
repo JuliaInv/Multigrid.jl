@@ -19,12 +19,12 @@ end
 return r;
 end
 
-function performSetup(i::Array{Int64}, AI::SparseMatrixCSC,  DDparam::DomainDecompositionParam,subMesh::RegularMesh)
+function performSetup(i::Array{Int64}, AI::SparseMatrixCSC,  DDparam::DomainDecompositionParam{VAL,IND},subMesh::RegularMesh) where {VAL,IND}
 	# println("setupping sub domain: ",i," by ",myid());
 	if DDparam.getSubDomainMass!=identity
 		AI = AI + DDparam.getSubDomainMass(DDparam,i);
 	end
-	DDPrec = DomainDecompositionPreconditionerParam([],i,AI,[],copySolver(DDparam.Ainv))
+	DDPrec = DomainDecompositionPreconditionerParam{VAL,IND}([],i,AI,(VAL)[],copySolver(DDparam.Ainv))
 	if isa(DDPrec.Ainv,MGsolver)
 		DDPrec.Ainv.MG.Meshes = [subMesh];	
 		AI = sparse(AI');
@@ -39,13 +39,13 @@ function performSetup(i::Array{Int64}, AI::SparseMatrixCSC,  DDparam::DomainDeco
 	return DDPrec;
 end
 
-function performSetup(i::Array{Int64}, AI::DomainDecompositionOperatorConstructor,  DDparam::DomainDecompositionParam,subMesh::RegularMesh)
+function performSetup(i::Array{Int64}, AI::DomainDecompositionOperatorConstructor{VAL,IND},  DDparam::DomainDecompositionParam{VAL,IND},subMesh::RegularMesh) where {VAL,IND}
 	AII = AI.getOperator(AI.problem_param);
 	if AI.getDirichletMass !=identity
 		DirichletMass = AI.getDirichletMass(DDparam,AI.problem_param,i)[:];
 		AII = AII + sparse(Diagonal(DirichletMass));
 	end
-	DDPrec = DomainDecompositionPreconditionerParam(AI.problem_param,i,AII,DirichletMass,copySolver(DDparam.Ainv))
+	DDPrec = DomainDecompositionPreconditionerParam{VAL,IND}(AI.problem_param,i,AII,DirichletMass,copySolver(DDparam.Ainv))
 	if isa(DDPrec.Ainv,MGsolver)
 		DDPrec.Ainv.MG.Meshes = [subMesh];
 		AII = sparse(AII');
@@ -78,11 +78,11 @@ end
 
 
 
-function setupDDSerial(AT::Union{SparseMatrixCSC,DomainDecompositionOperatorConstructor},DDparam::DomainDecompositionParam)
+function setupDDSerial(AT::Union{SparseMatrixCSC,DomainDecompositionOperatorConstructor{VAL,IND}},DDparam::DomainDecompositionParam{VAL,IND}) where {VAL,IND}
 M 			= DDparam.Mesh;
 numDomains 	= DDparam.numDomains;
 overlap 	= DDparam.overlap;
-DDPreconditioners 	= Array{DomainDecompositionPreconditionerParam}(undef,prod(numDomains));
+DDPreconditioners 	= Array{DomainDecompositionPreconditionerParam{VAL,IND}}(undef,prod(numDomains));
 DDparam.GlobalIndices = Array{Array{DDIndType}}(undef,prod(numDomains));
 n = M.n;
 for ii = 1:prod(numDomains)
@@ -94,7 +94,7 @@ for ii = 1:prod(numDomains)
 		DDPreconditioners[ii] = performSetup(i, AI,  DDparam,subMesh);
 	else
 		subparams = AT.getSubParams(AT.problem_param, M,i,numDomains,overlap);
-		AI = DomainDecompositionOperatorConstructor(subparams,AT.getSubParams,AT.getOperator,AT.getDirichletMass);
+		AI = DomainDecompositionOperatorConstructor{VAL,IND}(subparams,AT.getSubParams,AT.getOperator,AT.getDirichletMass);
 		DDPreconditioners[ii] = performSetup(i, AI,  DDparam,subMesh);
 	end
 	IIp = convert(Array{DDIndType},IIp);
@@ -104,7 +104,7 @@ DDparam.PrecParams = DDPreconditioners;
 return DDparam;
 end
 
-function solveDDSerial(AT::SparseMatrixCSC,b::Array,x::Array,DDparam::DomainDecompositionParam,niter=1,doTranspose::Int64=0)
+function solveDDSerial(AT::SparseMatrixCSC,b::Array,x::Array,DDparam::DomainDecompositionParam{VAL,IND},niter=1,doTranspose::Int64=0) where {VAL,IND}
 
 ncells = DDparam.Mesh.n;
 dim = length(ncells);
@@ -138,7 +138,7 @@ return x,DDparam;
 end
 
 
-function solveGSDDSerial(AT::SparseMatrixCSC,b::Array,x::Array,DDparam::DomainDecompositionParam,niter=1,doTranspose::Int64=0)
+function solveGSDDSerial(AT::SparseMatrixCSC,b::Array,x::Array,DDparam::DomainDecompositionParam{VAL,IND},niter=1,doTranspose::Int64=0) where {VAL,IND}
 
 ncells = DDparam.Mesh.n;
 dim = length(ncells);
@@ -179,7 +179,7 @@ end
 return x,DDparam;
 end
 
-function solveSubDomain(r,prec::DomainDecompositionPreconditionerParam,doTranspose::Int64)
+function solveSubDomain(r,prec::DomainDecompositionPreconditionerParam{VAL,IND},doTranspose::Int64) where {VAL,IND}
 	t = zeros(eltype(r),size(r));
 	t,prec.Ainv = solveLinearSystem!(prec.A_i,r,t,prec.Ainv,doTranspose);
 	return t,prec;

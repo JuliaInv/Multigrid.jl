@@ -17,16 +17,16 @@ const DDIndType = UInt32;
 export DomainDecompositionOperatorConstructor,DomainDecompositionParam,DomainDecompositionPreconditionerParam,getDomainDecompositionParam
 
 
-mutable struct DomainDecompositionPreconditionerParam
+mutable struct DomainDecompositionPreconditionerParam{VAL,IND}
 	sub_problem_param
 	i				:: Array{Int64,1}
-	A_i				:: SparseMatrixCSC
-	DirichletMass	:: Vector
+	A_i				:: SparseMatrixCSC{VAL,IND}
+	DirichletMass	:: Array{VAL}
 	Ainv			:: AbstractSolver
 end
 
-mutable struct DomainDecompositionParam <: AbstractSolver
-	PrecParams 			::Union{Array{DomainDecompositionPreconditionerParam,1},Array{RemoteChannel,1}}
+mutable struct DomainDecompositionParam{VAL,IND} <: AbstractSolver
+	PrecParams 			::Union{Array{DomainDecompositionPreconditionerParam{VAL,IND},1},Array{RemoteChannel,1}}
 	GlobalIndices		::Array{Array{DDIndType}}
 	Mesh				::RegularMesh
 	numDomains			::Array{Int64,1}
@@ -43,10 +43,10 @@ mutable struct DomainDecompositionParam <: AbstractSolver
 	nSolve				::Int
 	solveTime			::Real
 end
-function getDomainDecompositionParam(Mesh,numDomains,overlap,getIndicesOfCell,Ainv::AbstractSolver,getMass::Function = identity)
-	return DomainDecompositionParam((DomainDecompositionPreconditionerParam)[],[],Mesh,numDomains,overlap,getIndicesOfCell,Ainv,getMass,(Int64)[],getEmptyCtor(),0,0,0,0.0,0,0.0);
+function getDomainDecompositionParam(VAL::Type,IND::Type,Mesh,numDomains,overlap,getIndicesOfCell,Ainv::AbstractSolver,getMass::Function = identity)
+	return DomainDecompositionParam{VAL,IND}((DomainDecompositionPreconditionerParam{VAL,IND})[],[],Mesh,numDomains,overlap,getIndicesOfCell,Ainv,getMass,(Int64)[],getEmptyCtor(VAL,IND),0,0,0,0.0,0,0.0);
 end
-mutable struct DomainDecompositionOperatorConstructor
+mutable struct DomainDecompositionOperatorConstructor{VAL,IND}
 	problem_param	::Any
 	getSubParams  	::Function
 	getOperator		::Function
@@ -55,8 +55,8 @@ end
 
 
 
-function getEmptyCtor()
-	return DomainDecompositionOperatorConstructor(0,identity,identity,identity);
+function getEmptyCtor(VAL::Type,IND::Type)
+	return DomainDecompositionOperatorConstructor{VAL,IND}(0,identity,identity,identity);
 end
 
 include("DDIndices.jl");
@@ -67,19 +67,19 @@ include("DDParallel.jl");
 
 
 import Base.isempty
-function isempty(p::DomainDecompositionParam)
+function isempty(p::DomainDecompositionParam{VAL,IND}) where {VAL,IND}
 	return isempty(p.PrecParams);
 end
 
 import jInv.LinearSolvers.copySolver;
-function copySolver(s::DomainDecompositionParam)
+function copySolver(s::DomainDecompositionParam{VAL,IND}) where {VAL,IND}
 	# copies absolutely what's necessary.
-	getDomainDecompositionParam(s.Mesh,s.numDomains,s.overlap,s.getIndicesOfCell,copySolver(s.Ainv),s.getSubDomainMass);
+	getDomainDecompositionParam(VAL,IND,s.Mesh,s.numDomains,s.overlap,s.getIndicesOfCell,copySolver(s.Ainv),s.getSubDomainMass);
 end
 
 
 # import jInvUtils.clear!
-function clear!(s::DomainDecompositionParam)
+function clear!(s::DomainDecompositionParam{VAL,IND}) where {VAL,IND}
 	for k=1:length(s.DDPreconditioners)
 		clear!(s.DDPreconditioners[k]);
 	end
@@ -88,13 +88,13 @@ end
 
 
 import jInv.LinearSolvers.setupSolver
-function setupSolver(A::SparseMatrixCSC,DDparam::DomainDecompositionParam)
+function setupSolver(A::SparseMatrixCSC,DDparam::DomainDecompositionParam{VAL,IND}) where {VAL,IND}
 	return setupDDSerial(sparse(A'),DDparam);
 end
 
 
 import jInv.LinearSolvers.solveLinearSystem!;
-function solveLinearSystem!(At,B,X,param::DomainDecompositionParam,doTranspose=0)
+function solveLinearSystem!(At,B,X,param::DomainDecompositionParam{VAL,IND},doTranspose=0) where {VAL,IND}
 	
 	if param.doClear==1
 		clear!(param);
@@ -115,7 +115,11 @@ function solveLinearSystem!(At,B,X,param::DomainDecompositionParam,doTranspose=0
 			X[:] .= 0.0;
 			return X, param,flag,rnorm,iter,resvec;
 		end
-		Prec = r->solveDDSerial(At,r,zeros(eltype(X),size(X)),param,1,doTranspose)[1];
+		
+		mixed_precision = VAL!=eltype(B);
+		x0 = zeros(VAL,size(X));
+		rt = zeros(VAL,size(B));
+		Prec = r->(x0[:] .= 0.0; rt[:] .= r; return solveDDSerial(At,rt,x0,param,1,doTranspose)[1]);
 		# Prec = r->solveGSDDSerial(At,r,zeros(eltype(X),size(X)),param,1,doTranspose)[1];
 		X,flag,rnorm,iter,resvec = KrylovMethods.fgmres(getAfun(At,zeros(eltype(X),size(X)),4),B,5,tol = 1e-6,maxIter = 100,M = Prec, x = X,out=1,flexible=true);
 		# solveDD(At,B,X,param,doTranspose)

@@ -61,8 +61,6 @@ for l = 1:(param.levels-1)
 		(P,R,nc) = getLinearOperatorsSystemsFaces(n,withCellsBlock);
 		PT = sparse(P');
 		RT = sparse(R');
-		# PT = copy(R);
-		# RT = copy(P);
 		P = 0;
 		R = 0;
 		if geometric
@@ -102,6 +100,9 @@ for l = 1:(param.levels-1)
 		else
 			PDEparam = ATf.restrictParams(Meshes[l],Meshes[l+1],PDEparam,l);
 			Act = sparse(ATf.getOperator(Meshes[l+1],PDEparam)');
+		end
+		if param.singlePrecision
+			Act = convert(SparseMatrixCSC{VAL,IND},Act);
 		end
 		As[l+1] = Act;
 		Cop = Cop + nnz(Act);

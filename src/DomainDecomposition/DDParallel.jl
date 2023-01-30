@@ -2,7 +2,7 @@ export setupDDParallel
 export getWorkerForSubDomainMultiColor,solveDDParallel
 
 
-function setupDDParallel(AT::Union{SparseMatrixCSC,DomainDecompositionOperatorConstructor},DDparam::DomainDecompositionParam,workerList::Array{Int64})
+function setupDDParallel(AT::Union{SparseMatrixCSC,DomainDecompositionOperatorConstructor{VAL,IND}},DDparam::DomainDecompositionParam{VAL,IND},workerList::Array{Int64}) where {VAL,IND}
 if workerList==[]
 	return setupDDSerial(AT,DDparam);
 else
@@ -63,7 +63,7 @@ return DDparam;
 end
 
 
-function solveDDParallel(AT::SparseMatrixCSC,b::Array,x::Array,DDparam::DomainDecompositionParam,workerList,niter=1,doTranspose::Int64=0)
+function solveDDParallel(AT::SparseMatrixCSC,b::Array,x::Array,DDparam::DomainDecompositionParam{VAL,IND},workerList,niter=1,doTranspose::Int64=0) where {VAL,IND}
 if workerList==[]
 	return solveDD(AT,b,x,DDparam,niter,doTranspose);
 else
