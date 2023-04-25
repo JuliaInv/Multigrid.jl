@@ -12,17 +12,28 @@ function getBoxIdxs(UpperLeftCorner::Array{Int64},BottomRightCorner::Array{Int64
 		I2 = ones(Int64,length(i1))*i2';
 		return I1,I2
 	else
-		vx = UpperLeftCorner[1]:BottomRightCorner[1];
-		vy = UpperLeftCorner[2]:BottomRightCorner[2];
-		vz = UpperLeftCorner[3]:BottomRightCorner[3];
-		m, n, o = length(vy), length(vx), length(vz)
-		vx = reshape(vx, 1, n, 1)
-		vy = reshape(vy, m, 1, 1)
-		vz = reshape(vz, 1, 1, o)
-		om = ones(Int64, m)
-		on = ones(Int64, n)
-		oo = ones(Int64, o)
-		return (vx[om, :, oo], vy[:, on, oo], vz[om, on, :])
+		# vx = UpperLeftCorner[1]:BottomRightCorner[1];
+		# vy = UpperLeftCorner[2]:BottomRightCorner[2];
+		# vz = UpperLeftCorner[3]:BottomRightCorner[3];
+		# m, n, o = length(vy), length(vx), length(vz)
+		# vx = reshape(vx, 1, n, 1)
+		# vy = reshape(vy, m, 1, 1)
+		# vz = reshape(vz, 1, 1, o)
+		# om = ones(Int64, m)
+		# on = ones(Int64, n)
+		# oo = ones(Int64, o)
+		# return (vx[om, :, oo], vy[:, on, oo], vz[om, on, :])
+		v1 = UpperLeftCorner[1]:BottomRightCorner[1];
+		v2 = UpperLeftCorner[2]:BottomRightCorner[2];
+		v3 = UpperLeftCorner[3]:BottomRightCorner[3];
+		m1,m2,m3 = length(v1), length(v2), length(v3)
+		v1 = reshape(v1, m1, 1, 1)
+		v2 = reshape(v2, 1, m2, 1)
+		v3 = reshape(v3, 1, 1, m3)
+		o1 = ones(Int64, m1)
+		o2 = ones(Int64, m2)
+		o3 = ones(Int64, m3)
+		return (v1[:, o2, o3], v2[o1, :, o3], v3[o1, o2, :])
 	end
 end
 

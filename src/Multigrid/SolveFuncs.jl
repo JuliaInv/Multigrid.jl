@@ -62,8 +62,8 @@ function getMultigridPreconditioner(param::MGparam{VAL,IND},B::Array,verbose::Bo
 	return MMG;
 end
 
-function getAfun(AT::SparseMatrixCSC{VAL,IND},Az::Array{VAL},numCores::Int64) where {VAL,IND}
-	function Afun(z::Array{VAL})
+function getAfun(AT::SparseMatrixCSC{VAL,IND},Az::Array,numCores::Int64) where {VAL,IND}
+	function Afun(z::Array)
 		SpMatMul(AT,z,Az,numCores);
 		return Az;
 	end

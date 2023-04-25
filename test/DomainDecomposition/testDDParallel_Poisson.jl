@@ -47,7 +47,7 @@ q = randn(prod(n.+1));
 x = zeros(size(q)); 
 Ainv = getParallelJuliaSolver(Float64,Int64,numCores=numCores,backend=1);
 
-DDparam = getDomainDecompositionParam(Mr,NumCells,overlap,getNodalIndicesOfCell,Ainv);
+DDparam = getDomainDecompositionParam(Float64,Int64,Mr,NumCells,overlap,getNodalIndicesOfCell,Ainv);
 
 println("workers are: ",workers())
 
@@ -65,7 +65,7 @@ println(norm(Ar'*x - q)/norm(q))
 
 println("************************************************* Neumann DomainDecomposition for Poisson 2D ******************************************************");
 
-Ctor = DomainDecompositionOperatorConstructor(Mr,getSubParams,getLap,getDirichletMassNodalMesh);
+Ctor = DomainDecompositionOperatorConstructor{Float64,Int64}(Mr,getSubParams,getLap,getDirichletMassNodalMesh);
  
 setupDDParallel(Ctor,DDparam,workers());
 

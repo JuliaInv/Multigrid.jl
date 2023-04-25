@@ -88,23 +88,24 @@ println("************************************************* GMG RAP for Elasticit
 
 domain = [0.0, 1.0, 0.0, 1.0,0.0,1.0];
 # for some reason this test fails to converge at [8,8,8] and succeeds at larger sizes. TODO: check this. 
-n = [8,8,8];
-# n = [128,128,128];
+n = [16,16,16];
+#n = [256,256,256];
 
 Mr = getRegularMesh(domain,n)
 mu = 1.0*ones(prod(Mr.n));
-# lambda = 10.0.*mu;
-lambda = 1.0.*mu;
+lambda = 10.0.*mu;
+#lambda = 1.0.*mu;
 Ar = GetLinearElasticityOperatorMixedFormulation(Mr, mu,lambda);
 Ar = Ar + 1e-2*opnorm(Ar,1)*sparse(1.0I,size(Ar,2),size(Ar,2));
 MG.relaxType = "VankaFaces";
-MG.relaxParam = 0.5;
+MG.relaxParam = 0.75;
+MG.levels = 5;
 
 N = size(Ar,2);
 b = Ar*rand(N); b = b/norm(b);
 x = zeros(N);
 clear!(MG)
-MGsetup(Ar,Mr,MG,size(b,1),true);
+MGsetup(Ar,Mr,MG,size(b,2),true);
 println("****************************** Stand-alone GMG RAP: ******************************")
 solveMG(MG,b,x,true);
 @test norm(Ar*x - b) < 0.05;

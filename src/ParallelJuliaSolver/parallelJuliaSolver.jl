@@ -114,15 +114,20 @@ function setupLUFactor(AI::SparseMatrixCSC,param::parallelJuliaSolver{VAL,IND}) 
 	LU = lu(AI);
 	L = LU.L; U = LU.U; p = LU.p; q = LU.q; Rs = LU.Rs;
 	LU = 0;
+	dropTol = 1e-4;
+	T = length(L.nzval) + length(U.nzval);
 	# if dropTol > 0.0
-		# L.nzval[abs(L.nzval).<=dropTol] = 0.0;
-		# L = L + spzeros(L.m,L.n);
-		# d = 1./diag(U);
+		# L.nzval[abs.(L.nzval).<=dropTol] .= 0.0;
+		# L = dropzeros(L);
+		# d = 1.0./diag(U);
 		# U = d.*U;
-		# U.nzval[abs(U.nzval).<=dropTol] = 0.0;
-		# U = U + spzeros(U.m,U.n);
-		# U = (1./d).*U;
+		# U.nzval[abs.(U.nzval).<=dropTol] .= 0.0;
+		# U = dropzeros(U);
+		# d = (1.0./d);
+		# U = d.*U;
 	# end
+	# println("LU drop compression ratio: ",(length(L.nzval) + length(U.nzval))/T)
+	
 	Rs = 1.0./Rs[p];
 	for i=1:length(L.nzval)
 		@inbounds L.nzval[i]*=Rs[L.rowval[i]];

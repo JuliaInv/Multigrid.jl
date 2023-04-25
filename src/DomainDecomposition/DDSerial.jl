@@ -21,9 +21,9 @@ end
 
 function performSetup(i::Array{Int64}, AI::SparseMatrixCSC,  DDparam::DomainDecompositionParam{VAL,IND},subMesh::RegularMesh) where {VAL,IND}
 	# println("setupping sub domain: ",i," by ",myid());
-	if DDparam.getSubDomainMass!=identity
-		AI = AI + DDparam.getSubDomainMass(DDparam,i);
-	end
+	# if DDparam.getSubDomainMass!=identity
+		# AI = AI + DDparam.getSubDomainMass(DDparam,i);
+	# end
 	DDPrec = DomainDecompositionPreconditionerParam{VAL,IND}([],i,AI,(VAL)[],copySolver(DDparam.Ainv))
 	if isa(DDPrec.Ainv,MGsolver)
 		DDPrec.Ainv.MG.Meshes = [subMesh];	
@@ -91,6 +91,7 @@ for ii = 1:prod(numDomains)
 	subMesh = getSubMeshOfCell(numDomains,overlap,i,M);
 	if isa(AT,SparseMatrixCSC)==true
 		AI = sparse(AT[IIp,IIp]');
+		#DDPreconditioners[ii] = performSetup(i, sparse(AT'),  DDparam,M);
 		DDPreconditioners[ii] = performSetup(i, AI,  DDparam,subMesh);
 	else
 		subparams = AT.getSubParams(AT.problem_param, M,i,numDomains,overlap);

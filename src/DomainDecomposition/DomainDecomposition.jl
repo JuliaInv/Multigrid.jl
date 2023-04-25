@@ -14,7 +14,7 @@ using KrylovMethods
 
 const DDIndType = UInt32;
 
-export DomainDecompositionOperatorConstructor,DomainDecompositionParam,DomainDecompositionPreconditionerParam,getDomainDecompositionParam
+export DomainDecompositionOperatorConstructor,DomainDecompositionParam,DomainDecompositionPreconditionerParam,getDomainDecompositionParam,getDDpreconditioner
 
 
 mutable struct DomainDecompositionPreconditionerParam{VAL,IND}
@@ -43,8 +43,8 @@ mutable struct DomainDecompositionParam{VAL,IND} <: AbstractSolver
 	nSolve				::Int
 	solveTime			::Real
 end
-function getDomainDecompositionParam(VAL::Type,IND::Type,Mesh,numDomains,overlap,getIndicesOfCell,Ainv::AbstractSolver,getMass::Function = identity)
-	return DomainDecompositionParam{VAL,IND}((DomainDecompositionPreconditionerParam{VAL,IND})[],[],Mesh,numDomains,overlap,getIndicesOfCell,Ainv,getMass,(Int64)[],getEmptyCtor(VAL,IND),0,0,0,0.0,0,0.0);
+function getDomainDecompositionParam(VAL::Type,IND::Type,Mesh,numDomains,overlap,getIndicesOfCell,Ainv::AbstractSolver,getMass::Function = identity,workers::Array{Int64} = (Int64)[])
+	return DomainDecompositionParam{VAL,IND}((DomainDecompositionPreconditionerParam{VAL,IND})[],[],Mesh,numDomains,overlap,getIndicesOfCell,Ainv,getMass,workers,getEmptyCtor(VAL,IND),0,0,0,0.0,0,0.0);
 end
 mutable struct DomainDecompositionOperatorConstructor{VAL,IND}
 	problem_param	::Any
@@ -74,7 +74,7 @@ end
 import jInv.LinearSolvers.copySolver;
 function copySolver(s::DomainDecompositionParam{VAL,IND}) where {VAL,IND}
 	# copies absolutely what's necessary.
-	getDomainDecompositionParam(VAL,IND,s.Mesh,s.numDomains,s.overlap,s.getIndicesOfCell,copySolver(s.Ainv),s.getSubDomainMass);
+	getDomainDecompositionParam(VAL,IND,s.Mesh,s.numDomains,s.overlap,s.getIndicesOfCell,copySolver(s.Ainv),s.getSubDomainMass,s.workers);
 end
 
 
@@ -93,6 +93,8 @@ function setupSolver(A::SparseMatrixCSC,DDparam::DomainDecompositionParam{VAL,IN
 end
 
 
+
+
 import jInv.LinearSolvers.solveLinearSystem!;
 function solveLinearSystem!(At,B,X,param::DomainDecompositionParam{VAL,IND},doTranspose=0) where {VAL,IND}
 	
@@ -101,7 +103,11 @@ function solveLinearSystem!(At,B,X,param::DomainDecompositionParam{VAL,IND},doTr
 	end
 	# build preconditioner
 	if isempty(param)
-		setupDDSerial(At,param);
+		if length(param.workers) <= 1
+			setupDDSerial(At,param);
+		else
+			setupDDParallel(At,param,param.workers);
+		end
 	end 
 	flag = 0; rnorm = 0.0; iter = 0; resvec = [];
 	if !isempty(B)
@@ -116,17 +122,28 @@ function solveLinearSystem!(At,B,X,param::DomainDecompositionParam{VAL,IND},doTr
 			return X, param,flag,rnorm,iter,resvec;
 		end
 		
-		mixed_precision = VAL!=eltype(B);
-		x0 = zeros(VAL,size(X));
-		rt = zeros(VAL,size(B));
-		Prec = r->(x0[:] .= 0.0; rt[:] .= r; return solveDDSerial(At,rt,x0,param,1,doTranspose)[1]);
+		
 		# Prec = r->solveGSDDSerial(At,r,zeros(eltype(X),size(X)),param,1,doTranspose)[1];
-		X,flag,rnorm,iter,resvec = KrylovMethods.fgmres(getAfun(At,zeros(eltype(X),size(X)),4),B,5,tol = 1e-6,maxIter = 100,M = Prec, x = X,out=1,flexible=true);
+		Az = zeros(eltype(B),size(B));
+		Afun = z->(SpMatMul(At,z,Az,4);return Az;); 
+		X,flag,rnorm,iter,resvec = KrylovMethods.fgmres(Afun,B,5,tol = 1e-6,maxIter = 10,M = Prec, x = X,out=2,flexible=true);
+		#X,flag,rnorm,iter,resvec = KrylovMethods.fgmres(getAfun(At,zeros(eltype(X),size(X)),4),B,5,tol = 1e-6,maxIter = 100,M = Prec, x = X,out=1,flexible=true);
 		# solveDD(At,B,X,param,doTranspose)
 	end	
 	return X,param,flag,rnorm,iter,resvec
 end 
 
+function getDDpreconditioner(At::SparseMatrixCSC, param::DomainDecompositionParam{VAL,IND},B,doTranspose=0) where {VAL,IND}
+	x0 = zeros(VAL,size(B));
+	x_new = zeros(eltype(B),size(B));
+	rt = zeros(VAL,size(B));
+	if length(param.workers) <= 1
+		Prec = r->(x0[:] .= 0.0; rt[:] .= r; x_new[:].= solveDDSerial(At,rt,x0,param,1,doTranspose)[1]; return x_new);
+	else
+		Prec = r->(x0[:] .= 0.0; rt[:] .= r; x_new[:].= solveDDParallel(At,rt,x0,param,param.workers,1,doTranspose)[1]; return x_new);
+	end
+	return Prec
+end
 
 
 

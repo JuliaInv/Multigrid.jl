@@ -10,6 +10,7 @@ else
 	if length(ActualWorkers)<length(workerList)
 		warn("setupDDParallel: workerList included indices of non-existing workers.")
 	end
+	DDparam.workers = ActualWorkers;
 end
 numWorkers = length(ActualWorkers);
 
@@ -37,18 +38,20 @@ DDparam.GlobalIndices = Array{Array{DDIndType}}(undef,prod(numDomains));
 					i = cs2loc(ii,numDomains);
 					worker_index = getWorkerForSubDomainMultiColor(i,numDomains,numWorkers);
 					
-					# println("For cell ",i," we need worker ",ActualWorkers[worker_index],", and we have ",p)
+					#println("For cell ",i," we need worker ",ActualWorkers[worker_index],", and we have ",p)
 					if ActualWorkers[worker_index] == p
 						IIp = DDparam.getIndicesOfCell(numDomains,overlap, i,n);
 						subMesh = getSubMeshOfCell(numDomains,overlap,i,M);
+						#println("before sending worker ",p," to setup subdomain",i,", for color ",cellColor(i))
 						if isa(AT,SparseMatrixCSC)==true
 							AI = sparse(AT[IIp,IIp]');
 							DDPreconditioners[ii] = initRemoteChannel(performSetup,p,i, AI,  DDparam,subMesh);
 						else
 							subparams = AT.getSubParams(AT.problem_param, M,i,numDomains,overlap);
-							AI = DomainDecompositionOperatorConstructor(subparams,AT.getSubParams,AT.getOperator,AT.getDirichletMass);
+							AI = DomainDecompositionOperatorConstructor{VAL,IND}(subparams,AT.getSubParams,AT.getOperator,AT.getDirichletMass);
 							DDPreconditioners[ii] = initRemoteChannel(performSetup,p,i, AI,  DDparam,subMesh);
 						end
+						#println("after sending worker ",p," to setup subdomain",i,", for color ",cellColor(i))
 						IIp = convert(Array{DDIndType},IIp);
 						DDparam.GlobalIndices[ii] = IIp;
 						wait(DDPreconditioners[ii]);
@@ -98,10 +101,10 @@ for k=1:niter
 								if DDparam.PrecParams[ii].where != p
 									error("Sending to wrong worker!!!");
 								end
-								# println("before sending worker ",p," to solve subdomain",i,", for color ",cellColor(i))
+								#println("before sending worker ",p," to solve subdomain",i,", for color ",cellColor(i))
 								(t,DDparam.PrecParams[ii]) = remotecall_fetch(solveSubDomain, p, r, DDparam.PrecParams[ii],doTranspose);
 								x[IIp] = x[IIp] + t;
-								# println("after sending worker ",p," to solve subdomain",i,", for color ",cellColor(i))
+								#println("after sending worker ",p," to solve subdomain",i,", for color ",cellColor(i))
 							end
 						end
 					# end
