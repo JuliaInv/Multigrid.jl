@@ -1,6 +1,7 @@
 using jInv.Mesh;
 using KrylovMethods
 using Multigrid.DomainDecomposition
+using Multigrid.ParallelJuliaSolver
 
 import jInv.LinearSolvers.copySolver;
 import jInv.LinearSolvers.AbstractSolver;
@@ -128,6 +129,7 @@ include("Systems.jl");
 include("parRelax.jl");
 include("Vanka.jl");
 include("ClassicalAMG.jl")
+include("SchurCompSolver.jl")
 """
 function Multigrid.copySolver(MG::MGparam)
 

@@ -28,6 +28,9 @@ else
 	As[1] = sparse(ATf.getOperator(Mesh,ATf.param)');
 	PDEparam = ATf.param;
 end
+if param.singlePrecision
+	As[1] = convert(SparseMatrixCSC{VAL,IND},As[1]);
+end
 Meshes[1] = Mesh;
 n = Mesh.n;
 AT = As[1];
@@ -52,21 +55,22 @@ for l = 1:(param.levels-1)
 		nc = nc.-1;
 		RT = copy(P);
 		PT = sparse(P');
-		if geometric
+		# if geometric
 			# we need to make sure that the coarse "Galerkin" operator scales like the geometric stencil.
 			RT.nzval.*=(0.5^Meshes[l].dim);
-		end
+		# end
 		P = 0;
 	elseif param.transferOperatorType=="SystemsFacesLinear" || param.transferOperatorType=="SystemsFacesMixedLinear"
 		(P,R,nc) = getLinearOperatorsSystemsFaces(n,withCellsBlock);
 		PT = sparse(P');
 		RT = sparse(R');
+		# RT = P
 		P = 0;
 		R = 0;
-		if geometric
+		# if geometric
 			# we need to make sure that the coarse "Galerkin" operator scales like the geometric stencil.
 			RT.nzval.*=(0.5^Meshes[l].dim);
-		end
+		# end
 	end
 
 	relaxPrecs[l] = getRelaxPrec(AT,param.relaxType,relaxParamArr[l],Meshes[l],withCellsBlock);
@@ -127,6 +131,7 @@ end
 param.Ps = Ps;
 param.Rs = Rs;
 param.relaxPrecs = relaxPrecs;
+
 param = adjustMemoryForNumRHS(param,nrhs,verbose);
 param.doTranspose = 0;
 return param;
@@ -135,6 +140,8 @@ end
 
 
 function getRelaxPrec(AT::SparseMatrixCSC{VAL,IND},relaxType::String,relaxParam=1.0,Mesh_l=[],withCellsBlock=false) where {VAL,IND}
+
+(isVanka,VankaType) = getVankaRelaxType(relaxType)
 if relaxType=="Jac" || relaxType=="Jac-GMRES"
 	d = Vector(conj(relaxParam./diag(AT)));
 	return convert(Array{VAL},d);
@@ -143,10 +150,8 @@ elseif relaxType=="SPAI"
 elseif relaxType=="hybridKaczmarzNodal"
 	return getHybridKaczmarz(VAL, IND, AT, Mesh_l, relaxParam.numDomains, 
 						getNodalIndicesOfCell, relaxParam.omega_damp, relaxParam.numCores, relaxParam.numit);
-elseif relaxType=="VankaFaces"
-	return setupVankaFacesPreconditioner(AT,Mesh_l, relaxParam, withCellsBlock, FULL_VANKA);
-elseif relaxType=="EconVankaFaces"
-	return setupVankaFacesPreconditioner(AT,Mesh_l, relaxParam, withCellsBlock, ECON_VANKA);
+elseif isVanka
+	return setupVankaFacesPreconditioner(AT,Mesh_l, relaxParam, withCellsBlock, VankaType);
 elseif relaxType=="hybridVankaFacesKaczmarz"
 	return getHybridVankaFaces(AT,Mesh_l, relaxParam.numDomains, relaxParam.omega_damp, relaxParam.numCores, relaxParam.numit,withCellsBlock,KACMARZ_VANKA);
 else
@@ -195,7 +200,6 @@ else
 end
 
 memCycle = Array{CYCLEmem{VAL}}(undef,param.levels);
-
 N = size(param.As[1],2); 
 for l = 1:(param.levels-1)
 	N = size(param.As[l],2);
@@ -320,6 +324,9 @@ function defineCoarsestAinv(param::MGparam{VAL,IND},AT::SparseMatrixCSC{VAL,IND}
 if isa(param.LU,DomainDecompositionParam)
 	param.LU.Mesh = param.Meshes[end];
 	param.LU = setupDDSerial(AT,param.LU);
+elseif isa(param.LU,SchurCompSolver)
+	param.LU.Mesh = param.Meshes[end];
+	param.LU = setupSolver(sparse(AT'),param.LU);
 elseif isa(param.LU,AbstractSolver)
 	param.LU = setupSolver(sparse(AT'),param.LU);
 else

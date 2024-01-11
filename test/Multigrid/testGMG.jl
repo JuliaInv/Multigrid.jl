@@ -2,6 +2,7 @@ using jInv.Mesh;
 using Multigrid
 using LinearAlgebra
 using SparseArrays
+using Test
 println("***************** test GMG discretization ***************************")
 # function getNodalLaplacianMatrixDirichlet(Minv::RegularMesh)
 # newDomain = copy(Minv.domain);

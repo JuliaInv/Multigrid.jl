@@ -1,4 +1,4 @@
-export getLinearOperatorsSystemsFaces,getInjectionOperatorsSystemsFaces,MGsetupSystems,getFacesStaggeredIndicesOfCell
+export getLinearOperatorsSystemsFaces,getInjectionOperatorsSystemsFaces,MGsetupSystems,getFacesStaggeredIndicesOfCell,getLinearInterpolationCellCentered
 ## n is always in cells in this file
 
 function speye(n)
@@ -103,13 +103,10 @@ function get1DNodeFullWeightRestriction(n_cells::Int64)
 	if 2*nc != n
 		error("Err: get1DNodeFullWeightRestriction(): size should be a multiplication of 2");
 	end
-	#Qtr = 0.25*ones(n);
-	#R = spdiagm((Qtr,0.5*ones(n+1),Qtr),[-1,0,1],n+1,n+1);
 	R = spdiagm(-1=>fill(.25,n), 0=>fill(.5,n+1) , 1=>fill(.25,n));
 	
     R = sparse(R[:,1:2:end]');
-	# R[1,1:2] = [0.75 0.25];
-	# R[end,end-1:end] = [0.25 0.75];
+	R = R*2;
 	return R,nc;
 end
 
@@ -146,7 +143,7 @@ function get1DRestrictionCells(n::Int64)
 	#R = 1/2*spdiagm((ones(n-1),ones(n-1)),[0,1],n-1,n);
 	I,J,V = SparseArrays.spdiagm_internal(0 => fill(.5,n-1), 1 => fill(.5,n-1))
 	R = sparse(I, J, V, n-1, n);
-	R = R[1:2:n,:];
+	R = 2*R[1:2:n,:];
 	return R,nc;
 end
 

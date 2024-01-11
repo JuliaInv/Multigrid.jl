@@ -6,10 +6,30 @@ export GetElasticityOperatorMixedFormulation
 
 const Vanka_lib     = abspath(joinpath(splitdir(Base.source_path())[1],"../..","deps","builds","Vanka"))
 
+
+const parallel = false;
+
 export KACMARZ_VANKA
-const FULL_VANKA = 1
+const FULL_VANKA_RB = 1
 const KACMARZ_VANKA = 2
-const ECON_VANKA = 3
+const ECON_VANKA_RB = 3
+const FULL_VANKA_LEX = 4
+const FULL_VANKA_ADD = 5
+
+
+function getVankaRelaxType(s::String)
+	if s == "VankaFaces"
+		return (true,FULL_VANKA_RB);
+	elseif s == "EconVankaFaces"
+		return (true,ECON_VANKA_RB);
+	elseif s == "VankaFacesLex"
+		return (true,FULL_VANKA_LEX);
+	elseif s == "VankaFacesAdd"
+		return (true,FULL_VANKA_ADD);
+	else
+		return (false,0)
+	end
+end
 
 function toSingle(VAL::Type)
 if VAL==Float64
@@ -271,17 +291,26 @@ function extractEconVankaComponents(Acc::Array{VAL,2},w) where {VAL}
 end
 
 
-function setupVankaFacesPreconditioner(AT::SparseMatrixCSC{VAL,IND},M::RegularMesh,w::Float64,includePressure::Bool,VankaType::Int64 = FULL_VANKA) where {VAL,IND}
+function setupVankaFacesPreconditioner(AT::SparseMatrixCSC{VAL,IND},M::RegularMesh,w::Union{Float64,Tuple{Float64,Float64}},includePressure::Bool,VankaType::Int64 = FULL_VANKA_RB) where {VAL,IND}
 n = M.n;
 vankaPrecType = toSingle(VAL);
 blockSize,nf = getVankaBlockSize(n,includePressure);
 numVankaVarPerCell = blockSize*blockSize;
-if VankaType == ECON_VANKA
+if VankaType == ECON_VANKA_RB && parallel == true
 	numVankaVarPerCell = 3*(blockSize-1)+1;
 end
 LocalBlocks = zeros(vankaPrecType,numVankaVarPerCell,prod(M.n));
 Acc = zeros(eltype(AT),blockSize,blockSize);
 Idx_i = zeros(spIndType,blockSize);
+W = ones(blockSize);
+if length(w)==2
+	W = W*w[1];
+	if includePressure
+		W[end] = w[2];
+	end
+else
+	W = W*w;
+end
 
 if VankaType == KACMARZ_VANKA 
 	AAT = conj.(AT'*AT);
@@ -295,23 +324,43 @@ for ii = 1:prod(n)
 	# Acc1 = AT[Idx_i,Idx_i];
 	# Acc1 = full(Acc1');
 	
-	if VankaType == FULL_VANKA #
+	if VankaType == FULL_VANKA_RB || VankaType == FULL_VANKA_LEX
 		Acc = getDenseBlockFromAT(AT,Idx_i,Acc)
-		AccInv = convert(Array{vankaPrecType},(w.*inv(Acc))');
-		# Acc[1:end-1,1:end-1] = diagm(diag(Acc[1:end-1,1:end-1]));
-		# AccInv = convert(Array{vankaPrecType},(w.*inv(Acc))');
+		if length(w)==1
+			# if full
+			# AccInv = convert(Array{vankaPrecType},(w.*inv(Acc))');
+			# if econ
+			Acc[1:end-1,1:end-1] = diagm(diag(Acc[1:end-1,1:end-1]));
+			AccInv = convert(Array{vankaPrecType},(w.*inv(Acc))');
+		else ## length(w)==2 || VankaType == FULL_VANKA_ADD
+			# if full
+			AccInv = convert(Array{vankaPrecType},(W.*inv(Acc))');
+		end
+	elseif VankaType == FULL_VANKA_ADD
+		Acc = getDenseBlockFromAT(AT,Idx_i,Acc)
+		t = ones(blockSize)*0.5;
+		if i[1]==1    t[1] = 1.0;	end
+		if i[1]==n[1] t[2] = 1.0;	end
+		if i[2]==1    t[3] = 1.0;	end
+		if i[2]==n[2] t[4] = 1.0;	end
+		if length(i)==3
+			if i[3]==1    t[5] = 1.0;	end
+			if i[3]==n[3] t[6] = 1.0;	end
+		end
+		if includePressure
+			t[end] = 1.0;
+		end
+		AccInv = convert(Array{vankaPrecType},((t.*W).*inv(Acc))');
 	elseif VankaType == KACMARZ_VANKA
 		# ATi = convert(SparseMatrixCSC{ComplexF64,Int64},AT[:,Idx_i]);
 		# AccInv = convert(Array{vankaPrecType},(w.*inv(Matrix(ATi'*ATi))));
 		Acc = conj.(getDenseBlockFromAT(AAT,Idx_i,Acc));
 		AccInv = convert(Array{vankaPrecType},(w.*inv(Acc)'));
-		
-	elseif VankaType == ECON_VANKA
+	elseif VankaType == ECON_VANKA_RB
 		Acc = getDenseBlockFromAT(AT,Idx_i,Acc);
-		# Acc[1:end-1,1:end-1] = diagm(diag(Acc[1:end-1,1:end-1])./w)
-		# AccInv = convert(Array{vankaPrecType},(inv(Acc))');
-
-		AccInv = extractEconVankaComponents(Acc,w);
+		Acc[1:end-1,1:end-1] = diagm(diag(Acc[1:end-1,1:end-1])./w)
+		AccInv = convert(Array{vankaPrecType},(inv(Acc))');
+		# AccInv = extractEconVankaComponents(Acc,w);
 	else
 		error("unknown Vanka Type.")
 	end
@@ -322,34 +371,54 @@ end
 
 function RelaxVankaFacesColor(AT::SparseMatrixCSC{VAL,IND},x::Array{VAL},b::Array{VAL},
 								D::Array,numit::Int64,numCores::Int64,M::RegularMesh,
-								includePressure::Bool,VankaType::Int64 = FULL_VANKA) where {VAL,IND}
+								includePressure::Bool,VankaType::Int64 = FULL_VANKA_RB) where {VAL,IND}
 	if toSingle(VAL)!=eltype(D)
 		error("check types.");
 	end
 	n = M.n;
 	dim = M.dim;
+	
 	blockSize,nf = getVankaBlockSize(n,includePressure);
-	parallel = true;
+	
 	if parallel==false
 		Idxs = zeros(Int64,blockSize);
-		y = copy(x);
-		for k=1:numit
-			## this is the FULL_VANKA version.
-			for color = 1:(2^dim)
-				y[:] = x;
+		if VankaType==FULL_VANKA_LEX
+			for k=1:numit
+				## this is A FULL_VANKA version. 
 				for i = 1:prod(n)
 					i_vec = cs2loc(i,n);
-					if cellColor(i_vec)==color
-						Idxs = getVankaVariablesOfCell(i_vec,n,nf,Idxs,includePressure);
-						r = computeResidualAtIdx(AT,b,x,Idxs);
-						x[Idxs] = x[Idxs] + (reshape(D[:,i],blockSize,blockSize)'*r);
-						# void updateSolution(float complex *mat, double complex *x, double complex *r, int n,long long* Idxs){
-						# ccall((:updateSolution,Vanka_lib),Void,(Ptr{vankaPrecType},Ptr{Complex128},Ptr{Complex128},Int16,Ptr{Int64},)
+					Idxs = getVankaVariablesOfCell(i_vec,n,nf,Idxs,includePressure);
+					r = computeResidualAtIdx(AT,b,x,Idxs);
+					x[Idxs] = x[Idxs] + (reshape(D[:,i],blockSize,blockSize)'*r);
+				end
+			end
+		elseif VankaType==FULL_VANKA_ADD
+			y = copy(x);
+			for k=1:numit
+				## this is A FULL_VANKA version. 
+				for i = 1:prod(n)
+					i_vec = cs2loc(i,n);
+					Idxs = getVankaVariablesOfCell(i_vec,n,nf,Idxs,includePressure);
+					r = computeResidualAtIdx(AT,b,y,Idxs);
+					x[Idxs] = x[Idxs] + (reshape(D[:,i],blockSize,blockSize)'*r);
+				end
+			end
+		elseif VankaType==FULL_VANKA_RB || VankaType==ECON_VANKA_RB
+			y = copy(x);
+			for k=1:numit
+				## this is A FULL_VANKA version.
+				for color = 1:(2^dim)
+					y[:] = x;
+					for i = 1:prod(n)
+						i_vec = cs2loc(i,n);
+						if cellColor(i_vec)==color
+							Idxs = getVankaVariablesOfCell(i_vec,n,nf,Idxs,includePressure);
+							r = computeResidualAtIdx(AT,b,y,Idxs);
+							x[Idxs] = x[Idxs] + (reshape(D[:,i],blockSize,blockSize)'*r);
+							# void updateSolution(float complex *mat, double complex *x, double complex *r, int n,long long* Idxs){
+							# ccall((:updateSolution,Vanka_lib),Void,(Ptr{vankaPrecType},Ptr{Complex128},Ptr{Complex128},Int16,Ptr{Int64},)
 									# ,D[:,i],y ,r,convert(Int16,blockSize),Idxs);
-						# if norm(x[Idxs] - y[Idxs]) > 1e-14
-						# error("Fix updateSolution in C: ",norm(x[Idxs] - y[Idxs]));
-						# end
-					
+						end
 					end
 				end
 			end
@@ -397,7 +466,7 @@ end
 
 function RelaxHybridVanka(param::hybridKaczmarz{VAL,IND}, AT::SparseMatrixCSC{VAL,IND},x::Array{VAL},b::Array{VAL},
 								numit::Int64,numCores::Int64,M::RegularMesh,
-								includePressure::Bool,VankaType::Int64 = FULL_VANKA) where {VAL,IND}	
+								includePressure::Bool,VankaType::Int64 = FULL_VANKA_RB) where {VAL,IND}	
 if toSingle(VAL)!=eltype(param.invDiag)
 	error("check types.");
 end

@@ -1,6 +1,6 @@
 function recursiveCycle(param::MGparam{VAL,IND},b::Array{VAL},x::Array{VAL},level::Int64) where {VAL,IND}
 
-# println(string("Starting level ", level));
+#println(string("Starting level ", level));
 
 gmresTol = 1e-5;
 
@@ -43,19 +43,17 @@ RT = Rs[level];
 npresmth  = param.relaxPre(level);
 npostsmth = param.relaxPost(level);
 
+(isVanka,VankaType) = getVankaRelaxType(param.relaxType)
+
 if param.relaxType=="Jac-GMRES"
     Afun = getAfun(AT,param.memRelax[level].Az,numCores)
 	x = FGMRES_relaxation(Afun,r,x,npresmth,MM,gmresTol,false,numCores,param.memRelax[level])[1];
-elseif param.relaxType == "VankaFaces"
-	x = RelaxVankaFacesColor(AT,x,b,D,npresmth,numCores,param.Meshes[level],param.transferOperatorType=="SystemsFacesMixedLinear",FULL_VANKA);
-elseif param.relaxType == "EconVankaFaces"
-	x = RelaxVankaFacesColor(AT,x,b,D,npresmth,numCores,param.Meshes[level],param.transferOperatorType=="SystemsFacesMixedLinear",ECON_VANKA);
-elseif param.relaxType=="hybridVankaFacesKaczmarz"
-	x = RelaxHybridVanka(param.relaxPrecs[level], AT,x,b,npresmth,param.relaxPrecs[level].numCores,param.Meshes[level],
-								param.transferOperatorType=="SystemsFacesMixedLinear",KACMARZ_VANKA);
+elseif isVanka
+	x = RelaxVankaFacesColor(AT,x,b,D,npresmth,numCores,param.Meshes[level],param.transferOperatorType=="SystemsFacesMixedLinear",VankaType);
 else
 	x = relax(AT,r,x,b,D,npresmth,numCores);
 end
+
 
 SpMatMul(-oneType,AT,x,zeroType,r,numCores); #  r = -A'*x;
 
@@ -93,19 +91,28 @@ x = SpMatMul(oneType,PT,xc,oneType,x,numCores); # x += PT'*xc;
 
 r[:] = b;
 SpMatMul(-oneType,AT,x,oneType,r,numCores); #  r -= A'*x;
+
+
 if param.relaxType=="Jac-GMRES"
 	Afun = getAfun(AT,param.memRelax[level].Az,numCores)
 	x = FGMRES_relaxation(Afun,r,x,npostsmth,MM,gmresTol,false,numCores,param.memRelax[level])[1];
-elseif param.relaxType == "VankaFaces"
-	x = RelaxVankaFacesColor(AT,x,b,D,npostsmth,numCores,param.Meshes[level],param.transferOperatorType=="SystemsFacesMixedLinear",FULL_VANKA);
-elseif param.relaxType == "EconVankaFaces"
-	x = RelaxVankaFacesColor(AT,x,b,D,npostsmth,numCores,param.Meshes[level],param.transferOperatorType=="SystemsFacesMixedLinear", ECON_VANKA);
-elseif param.relaxType=="hybridVankaFacesKaczmarz"
-	x = RelaxHybridVanka(param.relaxPrecs[level], AT,x,b,npostsmth,param.relaxPrecs[level].numCores,param.Meshes[level],
-								param.transferOperatorType=="SystemsFacesMixedLinear",KACMARZ_VANKA);
+elseif isVanka
+	x = RelaxVankaFacesColor(AT,x,b,D,npostsmth,numCores,param.Meshes[level],param.transferOperatorType=="SystemsFacesMixedLinear",VankaType);
 else
 	x = relax(AT,r,x,b,D,npostsmth,numCores);
 end
+
+# if param.relaxType=="Jac-GMRES"
+	# Afun = getAfun(AT,param.memRelax[level].Az,numCores)
+	# x = FGMRES_relaxation(Afun,r,x,npostsmth,MM,gmresTol,false,numCores,param.memRelax[level])[1];
+# elseif isVanka
+	# # x = RelaxVankaFacesColor(AT,x,b,D,npostsmth,numCores,param.Meshes[level],param.transferOperatorType=="SystemsFacesMixedLinear",VankaType);
+# elseif param.relaxType=="hybridVankaFacesKaczmarz"
+	# x = RelaxHybridVanka(param.relaxPrecs[level], AT,x,b,npostsmth,param.relaxPrecs[level].numCores,param.Meshes[level],
+								# param.transferOperatorType=="SystemsFacesMixedLinear",KACMARZ_VANKA);
+# else
+	# x = relax(AT,r,x,b,D,npostsmth,numCores);
+# end
 
 return x
 end
@@ -127,7 +134,6 @@ end
 x .+= d.*r;
 return x
 end
-
 
 function solveCoarsest(param::MGparam{VAL,IND},b::Array{VAL},x::Array{VAL},doTranspose::Int64=0) where {VAL,IND}
 

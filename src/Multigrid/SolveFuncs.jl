@@ -121,7 +121,7 @@ function solveGMRES_MG(Afun::Function,param::MGparam{VAL,IND},b::Array,x0::Array
 MMG = getMultigridPreconditioner(param,b,verbose);
 out = -2;
 if verbose
-	out = 1;
+	out = 2;
 end
 if size(b,2)==1
 	b = vec(b);

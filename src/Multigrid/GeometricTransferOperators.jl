@@ -51,8 +51,9 @@ end
 
 function restrictCellCenteredVariables(rho::Array,n::Array{Int64})
 R,nc = getRestrictionCellCentered(n);
-rho_c = R*rho[:];
-return rho_c;
+rho_c = (0.5^length(n))*(R*rho[:]);
+R.nzval .*= (0.5^length(n));
+return rho_c,R;
 ## TODO: make this more efficient...
 end
 
@@ -66,16 +67,17 @@ return rho_c;
 end
 
 function restrictNodalVariables2(rho::Array,n_nodes::Array{Int64})
-P,nc = getFWInterp(n_nodes,true);
+# P,nc = getFWInterp(n_nodes,true);
 R1,nc1 = get1DNodeFullWeightRestriction(n_nodes[1]-1);
 R2,nc2 = get1DNodeFullWeightRestriction(n_nodes[2]-1);
 R = kron(R2,R1);
+R.nzval .*= (0.5^length(n_nodes));
 # rho_c = zeros(eltype(rho),size(P,2));
 # println(size(R))
 # println(size(rho[:]))
 
 rho_c = R*rho[:];
-return rho_c;
+return rho_c,R;
 ## TODO: make this more efficient...
 end
 
