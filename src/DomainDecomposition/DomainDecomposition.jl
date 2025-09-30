@@ -21,7 +21,7 @@ mutable struct DomainDecompositionPreconditionerParam{VAL,IND}
 	sub_problem_param
 	i				:: Array{Int64,1}
 	A_i				:: SparseMatrixCSC{VAL,IND}
-	DirichletMass	:: Array{VAL}
+	DirichletMass	:: Union{Array{VAL},VAL}
 	Ainv			:: AbstractSolver
 end
 
@@ -123,10 +123,10 @@ function solveLinearSystem!(At,B,X,param::DomainDecompositionParam{VAL,IND},doTr
 		end
 		
 		
-		# Prec = r->solveGSDDSerial(At,r,zeros(eltype(X),size(X)),param,1,doTranspose)[1];
+		Prec = r->solveGSDDSerial(At,r,zeros(eltype(X),size(X)),param,1,doTranspose)[1];
 		Az = zeros(eltype(B),size(B));
 		Afun = z->(SpMatMul(At,z,Az,4);return Az;); 
-		X,flag,rnorm,iter,resvec = KrylovMethods.fgmres(Afun,B,5,tol = 1e-6,maxIter = 10,M = Prec, x = X,out=2,flexible=true);
+		X,flag,rnorm,iter,resvec = KrylovMethods.fgmres(Afun,B,10,tol = 1e-6,maxIter = 20,M = Prec, x = X,out=2,flexible=true);
 		#X,flag,rnorm,iter,resvec = KrylovMethods.fgmres(getAfun(At,zeros(eltype(X),size(X)),4),B,5,tol = 1e-6,maxIter = 100,M = Prec, x = X,out=1,flexible=true);
 		# solveDD(At,B,X,param,doTranspose)
 	end	

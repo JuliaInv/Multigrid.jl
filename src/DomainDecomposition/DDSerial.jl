@@ -41,6 +41,7 @@ end
 
 function performSetup(i::Array{Int64}, AI::DomainDecompositionOperatorConstructor{VAL,IND},  DDparam::DomainDecompositionParam{VAL,IND},subMesh::RegularMesh) where {VAL,IND}
 	AII = AI.getOperator(AI.problem_param);
+	DirichletMass = zero(VAL)
 	if AI.getDirichletMass !=identity
 		DirichletMass = AI.getDirichletMass(DDparam,AI.problem_param,i)[:];
 		AII = AII + sparse(Diagonal(DirichletMass));

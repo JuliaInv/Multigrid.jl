@@ -116,7 +116,7 @@ mutable struct MGparam{VAL,IND}
 end
 
 
-const spValType = ComplexF32
+const spValType = ComplexF64
 
 include("GeometricTransferOperators.jl")
 include("MGsetup.jl");
